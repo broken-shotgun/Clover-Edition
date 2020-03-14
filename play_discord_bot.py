@@ -3,12 +3,13 @@ import os
 import random
 import sys
 import time
+import uuid
 
 import re, json, logging, asyncio, discord
 from logging.handlers import SysLogHandler
 
 from play import GameManager
-from play import get_generator
+from play import get_generator, save_story
 from storymanager import Story
 from utils import *
 from gpt2generator import GPT2Generator
@@ -46,6 +47,11 @@ generator = get_generator()
 gm = GameManager(generator)
 queue = asyncio.Queue()
 logger.info('Worker instance started')
+
+def is_in_channel():
+    async def predicate(ctx):
+        return ctx.message.channel.name == CHANNEL
+    return commands.check(predicate)
 
 
 def escape(text):
@@ -115,10 +121,8 @@ def create_tts_mp3(filename, message):
     tts.save(filename)
 
 @bot.command(name='next', help='Continues AI Dungeon game')
+@is_in_channel()
 async def game_next(ctx, *, text='continue'):
-    if ctx.message.channel.name != CHANNEL:
-        return
-
     action = text
     if action[0] == '"':
         action = "You say " + action
@@ -137,6 +141,7 @@ async def game_next(ctx, *, text='continue'):
 
 
 @bot.command(name='revert', help='Reverts the previous action')
+@is_in_channel()
 async def game_revert(ctx):
     if len(gm.story.actions) == 0:
         await ctx.send("You can't go back any farther. ")
@@ -152,10 +157,8 @@ async def game_revert(ctx):
 
 @bot.command(name='newgame', help='Starts a new game')
 @commands.has_role(ADMIN_ROLE)
+@is_in_channel()
 async def game_newgame(ctx):
-    if ctx.message.channel.name != CHANNEL:
-        return
-
     if gm.story == None:
         await ctx.send('Provide intial context with !next')
         return
@@ -172,10 +175,8 @@ async def game_newgame(ctx):
 
 @bot.command(name='restart', help='Restarts the game from initial prompt')
 @commands.has_role(ADMIN_ROLE)
+@is_in_channel()
 async def game_restart(ctx):
-    if ctx.message.channel.name != CHANNEL:
-        return
-
     if gm.story == None:
         await ctx.send('Provide intial context with !next')
         return
@@ -192,42 +193,61 @@ async def game_restart(ctx):
     await ctx.send(gm.story.context)
 
 
-# @bot.command(name='save', help='Saves the current game')
-# @commands.has_role(ADMIN_ROLE)
-# async def game_save(ctx):
-#     if ctx.message.channel.name != CHANNEL:
-#         return
-
-#     if gm.story == None:
-#         return
-
-#     id = gm.story.save_to_storage()
-#     await ctx.send("Game saved.")
-#     await ctx.send("To load the game, type 'load' and enter the following ID: {}".format(id))
-
-
-# @bot.command(name='load', help='Load the game with given ID')
-# @commands.has_role(ADMIN_ROLE)
-# async def game_load(ctx, *, text='save_game_id'):
-#     if ctx.message.channel.name != CHANNEL:
-#         return
+@bot.command(name='save', help='Saves the current game')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def game_save(ctx, text=str(uuid.uuid1())):
+    if gm.story == None:
+        return
     
-#     if gm.story == None:
-#         gm.story = Story(generator)
+    if not gm.story.savefile or len(gm.story.savefile.strip()) == 0:
+        savefile = text
+    else:
+        savefile = gm.story.savefile
 
-#     result = gm.story.load_from_storage(text)
-#     await ctx.send("\nLoading Game...\n")
-#     await ctx.send(result)
+    save_story(gm.story, savefile)
+
+    await ctx.send("Game saved.")
+    await ctx.send(f"To load the game, type '!load {savefile}'")
+
+
+@bot.command(name='load', help='Load the game with given ID')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def game_load(ctx, *, text='save_game_id'):
+    if gm.story == None:
+        gm.story = Story(generator)
+
+    with open(f"saves/{text}.json", 'r', encoding="utf-8") as file:
+        try:
+            savefile = os.path.splitext(file.name.strip())[0]
+            savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
+            gm.story.savefile = savefile
+            gm.story.from_json(file.read())
+        except FileNotFoundError:
+            output("Save file not found. ", "error")
+        except IOError:
+            output("Something went wrong; aborting. ", "error")
+
+    last_prompt = gm.story.actions[-1] if len(gm.story.actions) > 0 else ""
+    last_result = gm.story.results[-1] if len(gm.story.results) > 0 else ""
+
+    await ctx.send("\nLoading Game...\n")
+    await ctx.send(gm.story.context)
+
+    if last_prompt and len(last_prompt) > 0:
+        await ctx.send(last_prompt)
+
+    if last_result and len(last_result) > 0:
+        await ctx.send(last_result)
 
 
 @bot.command(name='exit', help='Saves and exits the current game')
 @commands.has_role(ADMIN_ROLE)
+@is_in_channel()
 async def game_exit(ctx):
-    if ctx.message.channel.name != CHANNEL:
-        return
-
     if gm.story is not None:
-        # await game_save(ctx)
+        await game_save(ctx)
         await ctx.send("Exiting game...")
 
     guild = ctx.message.guild
@@ -244,6 +264,7 @@ async def game_exit(ctx):
 
 @bot.command(name='join', help='Join the voice channel of the user')
 @commands.has_role(ADMIN_ROLE)
+@is_in_channel()
 async def join_voice(ctx):
     voice_channel = ctx.message.author.voice.channel
 
@@ -254,6 +275,7 @@ async def join_voice(ctx):
 
 @bot.command(name='leave', help='Join the voice channel of the user')
 @commands.has_role(ADMIN_ROLE)
+@is_in_channel()
 async def leave_voice(ctx):
     guild = ctx.message.guild
     voice_client = guild.voice_client
