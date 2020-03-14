@@ -12,3 +12,4 @@ story*.json
 .vscode/
 .idea/
 .python-version
+tmp/
