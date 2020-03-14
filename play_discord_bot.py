@@ -65,9 +65,8 @@ async def on_ready():
     logger.info('Bot is ready')
     loop = asyncio.get_event_loop()
     
-    upload_story = True
-    if gm.story != None:
-            gm.story = None
+    if gm.story:
+        gm.story = None
 
     while True:
         # poll queue for messages, block here if empty
@@ -79,7 +78,7 @@ async def on_ready():
         guild = ai_channel.guild
         voice_client = guild.voice_client
 
-        if voice_client is not None and not voice_client.is_connected():
+        if voice_client and not voice_client.is_connected():
             logger.info('original voice client disconnected, finding new client...')
             for vc in guild.voice_clients:
                 if vc.is_connected():
@@ -99,7 +98,7 @@ async def on_ready():
                     response = await asyncio.wait_for(task, 180, loop=loop)
                     sent = escape(response)
                     # handle tts if in a voice channel
-                    if voice_client is not None and voice_client.is_connected():
+                    if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
                     await ai_channel.send(sent)
         except Exception as err:
@@ -159,9 +158,12 @@ async def game_revert(ctx):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_newgame(ctx):
-    if gm.story == None:
+    if gm.story is None:
         await ctx.send('Provide intial context with !next')
         return
+
+    if gm.story:
+        await game_save(ctx)
 
     # clear queue
     while not queue.empty():
@@ -177,7 +179,7 @@ async def game_newgame(ctx):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_restart(ctx):
-    if gm.story == None:
+    if gm.story is None:
         await ctx.send('Provide intial context with !next')
         return
 
@@ -197,7 +199,7 @@ async def game_restart(ctx):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_save(ctx, text=str(uuid.uuid1())):
-    if gm.story == None:
+    if gm.story is None:
         return
     
     if not gm.story.savefile or len(gm.story.savefile.strip()) == 0:
@@ -215,7 +217,7 @@ async def game_save(ctx, text=str(uuid.uuid1())):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_load(ctx, *, text='save_game_id'):
-    if gm.story == None:
+    if gm.story is None:
         gm.story = Story(generator)
 
     with open(f"saves/{text}.json", 'r', encoding="utf-8") as file:
@@ -246,13 +248,13 @@ async def game_load(ctx, *, text='save_game_id'):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_exit(ctx):
-    if gm.story is not None:
+    if gm.story:
         await game_save(ctx)
         await ctx.send("Exiting game...")
 
     guild = ctx.message.guild
     voice_client = guild.voice_client
-    if voice_client is not None:
+    if voice_client:
         if voice_client.is_connected():
             await voice_client.disconnect()
         else:
@@ -295,7 +297,7 @@ async def leave_voice(ctx):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.CommandNotFound): return
     logger.error(error)
-    logger.error('Ignoring exception in command {}:'.format(ctx.command))
+    logger.error(f'Ignoring exception in command: {ctx.command}')
     # TODO handle errors
 
 
