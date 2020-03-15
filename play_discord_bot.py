@@ -73,7 +73,7 @@ async def on_ready():
         msg = None
         while not msg: msg = await queue.get()
         logger.info(f'Processing message: {msg}'); args = json.loads(msg)
-        channel, text = args['channel'], f'\n> {args["text"]}\n'
+        channel, action = args['channel'], args["text"]
         ai_channel = bot.get_channel(channel)
         guild = ai_channel.guild
         voice_client = guild.voice_client
@@ -91,10 +91,10 @@ async def on_ready():
             async with ai_channel.typing():
                 if gm.story is None:
                     await ai_channel.send("Setting context for new story...")
-                    gm.story = Story(generator, escape(args["text"]))
+                    gm.story = Story(generator, escape(action))
                     await ai_channel.send("Provide initial prompt with !next")
                 else:
-                    task = loop.run_in_executor(None, gm.story.act, args["text"])
+                    task = loop.run_in_executor(None, gm.story.act, action, True, False)
                     response = await asyncio.wait_for(task, 180, loop=loop)
                     sent = escape(response)
                     # handle tts if in a voice channel
@@ -161,13 +161,9 @@ async def game_newgame(ctx):
     if gm.story is None:
         await ctx.send('Provide intial context with !next')
         return
-    # if gm.story:
-    #     await game_save(ctx)
-    # clear queue
-    while not queue.empty():
-        await queue.get()
-    await queue.join()
+
     gm.story = None
+    
     await ctx.send('\n==========\nNew game\n==========\nProvide intial context with !next')
 
 
@@ -178,11 +174,6 @@ async def game_restart(ctx):
     if gm.story is None:
         await ctx.send('Provide intial context with !next')
         return
-
-    # clear queue
-    while not queue.empty():
-        await queue.get()
-    await queue.join()
 
     gm.story.actions = []
     gm.story.results = []
