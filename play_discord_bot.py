@@ -161,17 +161,13 @@ async def game_newgame(ctx):
     if gm.story is None:
         await ctx.send('Provide intial context with !next')
         return
-
-    if gm.story:
-        await game_save(ctx)
-
+    # if gm.story:
+    #     await game_save(ctx)
     # clear queue
     while not queue.empty():
         await queue.get()
     await queue.join()
-
     gm.story = None
-    
     await ctx.send('\n==========\nNew game\n==========\nProvide intial context with !next')
 
 
