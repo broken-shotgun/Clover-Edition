@@ -94,7 +94,7 @@ async def on_ready():
                     gm.story = Story(generator, escape(action))
                     await ai_channel.send("Provide initial prompt with !next")
                 else:
-                    task = loop.run_in_executor(None, gm.story.act, action, True, False)
+                    task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 180, loop=loop)
                     sent = escape(response)
                     # handle tts if in a voice channel
