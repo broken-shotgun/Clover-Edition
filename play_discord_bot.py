@@ -105,9 +105,9 @@ async def bot_read_message(loop, voice_client, message):
     voice_client.play(discord.FFmpegPCMAudio(filename))
     voice_client.source = discord.PCMVolumeTransformer(voice_client.source)
     voice_client.source.volume = 1
-    # while voice_client.is_playing():
-    #     await asyncio.sleep(1)
-    # voice_client.stop() 
+    while voice_client.is_playing():
+        await asyncio.sleep(1)
+    voice_client.stop() 
 
 
 def create_tts_mp3(filename, message):
