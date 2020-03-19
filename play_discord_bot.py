@@ -106,7 +106,7 @@ async def bot_read_message(loop, voice_client, message):
     voice_client.source = discord.PCMVolumeTransformer(voice_client.source)
     voice_client.source.volume = 1
     while voice_client.is_playing():
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.1)
     voice_client.stop() 
 
 
@@ -289,7 +289,22 @@ async def leave_voice(ctx):
                 if vc.is_connected():
                     await voice_client.disconnect()
     else:
-        await ctx.send("You are not currently in a voice channel")        
+        await ctx.send("You are not currently in a voice channel")
+
+@bot.command(name='silence', help='Ends the current dialogue being read by TTS')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def silence_voice(ctx):
+    guild = ctx.message.guild
+    voice_client = guild.voice_client
+    if voice_client:
+        if voice_client.is_connected():
+            voice_client.stop()
+        else:
+            for vclient in guild.voice_clients:
+                if vclient.is_connected():
+                    vclient.stop()
+                    break
 
 
 @bot.event
