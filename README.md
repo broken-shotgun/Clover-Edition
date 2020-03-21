@@ -105,6 +105,14 @@ Once downloaded your model folder should look like this:
         └── vocab.json
 ```
 
+#### Text to Speech:
+
+Install optional requirements, or just run `pip install --upgrade google-cloud-texttospeech`
+
+To setup WaveNet voices for Text to Speech, we'll need to setup Google Cloud Platform.
+
+Follow the [Quickstart guide](https://cloud.google.com/text-to-speech/docs/quickstart-client-libraries#client-libraries-install-python) and make sure to et `GOOGLE_APPLICATION_CREDENTIALS` to location of JSON file with credentials on your machine.
+
 To play, just enter the folder and run "play.py" with python3. From the command line:
 ```
 cd Clover-Edition

@@ -13,3 +13,4 @@ story*.json
 .idea/
 .python-version
 tmp/
+credentials/

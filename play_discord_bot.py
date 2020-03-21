@@ -18,6 +18,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 from discord.ext import commands
 from gtts import gTTS
+from google.cloud import texttospeech
 
 # bot setup
 bot = commands.Bot(command_prefix='!')
@@ -102,7 +103,7 @@ async def on_ready():
 
 async def bot_read_message(loop, voice_client, message):
     filename = 'tmp/message.mp3'
-    tts_task = loop.run_in_executor(None, create_tts_mp3, filename, message)
+    tts_task = loop.run_in_executor(None, create_tts_mp3_v2, filename, message)
     await asyncio.wait_for(tts_task, 60, loop=loop)
     voice_client.play(discord.FFmpegPCMAudio(filename))
     voice_client.source = discord.PCMVolumeTransformer(voice_client.source)
@@ -115,6 +116,34 @@ async def bot_read_message(loop, voice_client, message):
 def create_tts_mp3(filename, message):
     tts = gTTS(message, lang='en')
     tts.save(filename)
+
+
+# Instantiates a client
+client = texttospeech.TextToSpeechClient()
+
+def create_tts_mp3_v2(filename, message):
+    # Set the text input to be synthesized
+    synthesis_input = texttospeech.types.SynthesisInput(text=message)
+
+    # Build the voice request, select the language code ("en-US") and the ssml
+    # voice gender ("neutral")
+    voice = texttospeech.types.VoiceSelectionParams(
+        language_code='en-US',
+        ssml_gender=texttospeech.enums.SsmlVoiceGender.NEUTRAL)
+
+    # Select the type of audio file you want returned
+    audio_config = texttospeech.types.AudioConfig(
+        audio_encoding=texttospeech.enums.AudioEncoding.MP3)
+
+    # Perform the text-to-speech request on the text input with the selected
+    # voice parameters and audio file type
+    response = client.synthesize_speech(synthesis_input, voice, audio_config)
+
+    # The response's audio_content is binary.
+    with open(filename, 'wb') as out:
+        # Write the response to the output file.
+        out.write(response.audio_content)
+        print(f'Audio content written to file "{filename}"')
 
 
 @bot.command(name='next', help='Continues AI Dungeon game')
