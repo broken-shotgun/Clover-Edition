@@ -129,7 +129,7 @@ def create_tts_mp3_v2(filename, message):
     # voice gender ("neutral")
     voice = texttospeech.types.VoiceSelectionParams(
         language_code='en-US',
-        ssml_gender=texttospeech.enums.SsmlVoiceGender.NEUTRAL)
+        ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
 
     # Select the type of audio file you want returned
     audio_config = texttospeech.types.AudioConfig(
