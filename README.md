@@ -47,7 +47,7 @@ Video walkthrough of Windows install:
 
 To play with GPU acceleration, you need an NVIDA GPU with CUDA installed (and possibly cuDNN, read ahead). The original "XL" 1558M parameter model requires at least 4GB of VRAM. Smaller models may consume much less. On CPU response times vary from 30 to 90 seconds on the XL 1558M model, which is slow but usable.
 
-If you'd like to automatically install and setup the game, there are currently two different Windows installers. You can find a batch installer [here](https://github.com/AIDungeonpastes/Clover-Edition-Installer/releases) and a .exe installer [here](https://github.com/AIDungeonWiXAnon/AID2-Installer-Project/releases), or you can manually install by following the instructions below: 
+If you'd like to automatically install and setup the game, there are currently two different Windows installers. You can find a batch installer [here](https://github.com/AIDungeonpastes/Clover-Edition-Installer/releases) and a .exe installer [here](https://github.com/AIDungeonWiXAnon/AID2-Installer-Project/releases), or you can manually install by following the instructions below.
 
 I should mention a program called [Anaconda](https://docs.anaconda.com/anaconda/install/) and its little sibling [Miniconda](https://docs.conda.io/en/latest/miniconda.html) that claims to make it easy to install most of this stuff with a few commands in the terminal (although it already is easy to install most this stuff.) Including installing CUDA and cuDNN. It has been tested and shown to work, but nobody has created a guide for it yet. Report if you end up doing so. Otherwise:
 
@@ -147,7 +147,7 @@ I threw together a quick page of some tips [here](DATASETS.md). I plan to throw 
 
 Fine tunning is not currently a push button thing and requires some minimal technical ability. Most people are using the program gpt-simple. You may have more luck with the much more advanced [Huggingface-Transformers](https://github.com/huggingface/transformers) program that we use to power Clover-Edition. [This](https://huggingface.co/transformers/examples.html#language-model-fine-tuning) seems to be their documentation on fine-tuning.
 
-Anon says: "Here's an ipynb you can train new models with using the transformers lib that clover edition uses directly, rather than having to convert it: https://0x0.st/zDRC.ipynb "
+Anon says: "Here's an ipynb you can train new models with using the transformers lib that clover edition uses directly, rather than having to convert it: <https://0x0.st/zDRC.ipynb>"
 
 #### Converting Tensorflow model to Pytorch
 
