@@ -24,6 +24,8 @@ bot = commands.Bot(command_prefix='!')
 CHANNEL = 'active-investigations'
 ADMIN_ROLE = 'Chief'
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+EXAMPLE_CONTEXT = "You are Glorpulon, a sausage farmer from Kromula 7.  You are deathly afraid of napkins."
+EXAMPLE_PROMPT = "You are harvesting sausages when all the sudden lava starts rising up from the ground.  Your wife runs out of the house and yells"
 
 if DISCORD_TOKEN is None:
     print('Error: DISCORD_TOKEN is not set')
@@ -85,7 +87,7 @@ async def on_ready():
                 if gm.story is None:
                     await ai_channel.send("Setting context for new story...")
                     gm.story = Story(generator, escape(action))
-                    await ai_channel.send("Provide initial prompt with !next (Ex. You are harvesting sausages when all the sudden lava starts rising up from the ground.  Your wife runs out of the house and yells)")
+                    await ai_channel.send(f"Provide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 180, loop=loop)
@@ -182,11 +184,11 @@ async def game_revert(ctx):
 @is_in_channel()
 async def game_newgame(ctx):
     if not gm.story:
-        await ctx.send('Provide intial context with !next (Ex. "You are Glorpulon, a sausage farmer from Kromula 7.  You are deathly afraid of napkins.)')
+        await ctx.send(f"Provide intial context with !next (Ex. {EXAMPLE_CONTEXT})")
         return
     await game_save(ctx)
     gm.story = None
-    await ctx.send('\n==========\nNew game\n==========\nProvide intial context with !next (Ex. "You are Glorpulon, a sausage farmer from Kromula 7.  You are deathly afraid of napkins.)')
+    await ctx.send(f"\n==========\nNew game\n==========\nProvide intial context with !next (Ex. {EXAMPLE_CONTEXT})")
 
 
 @bot.command(name='restart', help='Restarts the game from initial prompt')
@@ -194,7 +196,7 @@ async def game_newgame(ctx):
 @is_in_channel()
 async def game_restart(ctx):
     if not gm.story:
-        await ctx.send('Provide intial context with !next (Ex. "You are Glorpulon, a sausage farmer from Kromula 7.  You are deathly afraid of napkins.)')
+        await ctx.send(f"Provide intial context with !next (Ex. {EXAMPLE_CONTEXT})")
         return
     gm.story.savefile = ""
     gm.story.actions = []
