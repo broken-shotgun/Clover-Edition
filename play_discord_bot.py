@@ -102,12 +102,10 @@ async def on_ready():
 
 
 async def bot_read_message(loop, voice_client, message):
-    filename = 'tmp/message.mp3'
+    filename = 'tmp/message.ogg'
     tts_task = loop.run_in_executor(None, create_tts_mp3_v2, filename, message)
     await asyncio.wait_for(tts_task, 60, loop=loop)
-    voice_client.play(discord.FFmpegPCMAudio(filename))
-    voice_client.source = discord.PCMVolumeTransformer(voice_client.source)
-    voice_client.source.volume = 1
+    voice_client.play(discord.FFmpegOpusAudio(filename))
     while voice_client.is_playing():
         await asyncio.sleep(0.1)
     voice_client.stop() 
@@ -133,7 +131,7 @@ def create_tts_mp3_v2(filename, message):
 
     # Select the type of audio file you want returned
     audio_config = texttospeech.types.AudioConfig(
-        audio_encoding=texttospeech.enums.AudioEncoding.MP3)
+        audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
 
     # Perform the text-to-speech request on the text input with the selected
     # voice parameters and audio file type
