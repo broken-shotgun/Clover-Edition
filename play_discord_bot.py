@@ -126,7 +126,8 @@ def create_tts_mp3_v2(filename, message):
     # Build the voice request, select the language code ("en-US") and the ssml
     # voice gender ("neutral")
     voice = texttospeech.types.VoiceSelectionParams(
-        language_code='en-US',
+        language_code='en-US', # options: 'en-US', 'en-IN', 'en-GB', 'en-AU'
+        name='en-US-Wavenet-C', # options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Standard-C'
         ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
 
     # Select the type of audio file you want returned
