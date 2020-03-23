@@ -3,8 +3,8 @@ from pathlib import Path
 from datetime import datetime
 
 # remove this in a few days
-with open(Path('interface', 'start-message.txt'), 'r') as file_:
-    print('\x1B[7m' + file_.read() + '\x1B[27m')
+# with open(Path('interface', 'start-message.txt'), 'r') as file_:
+#     print('\x1B[7m' + file_.read() + '\x1B[27m')
 import gc
 import torch
 
