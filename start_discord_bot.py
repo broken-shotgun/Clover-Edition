@@ -14,10 +14,7 @@ from storymanager import Story
 from utils import *
 from gpt2generator import GPT2Generator
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
 from discord.ext import commands
-from gtts import gTTS
 from google.cloud import texttospeech
 
 # bot setup
@@ -46,6 +43,10 @@ logger.setLevel(logging.INFO)
 generator = get_generator()
 gm = GameManager(generator)
 queue = asyncio.Queue()
+
+# TTS setup
+client = texttospeech.TextToSpeechClient()
+
 logger.info('Worker instance started')
 
 def is_in_channel():
@@ -93,54 +94,35 @@ async def on_ready():
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 180, loop=loop)
                     sent = escape(response)
-                    await ai_channel.send(sent)
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
+                    await ai_channel.send(sent) # ai_channel.send(sent, tts=True) is much easier, but it always appends "Bot says..."
+                                                # which gets annoying real fast and the voice isn't configurable
         except Exception as err:
             logger.info('Error with message: ', exc_info=True)
 
 
 async def bot_read_message(loop, voice_client, message):
     filename = 'tmp/message.ogg'
-    tts_task = loop.run_in_executor(None, create_tts_mp3_v2, filename, message)
+    tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
     await asyncio.wait_for(tts_task, 60, loop=loop)
     voice_client.play(discord.FFmpegOpusAudio(filename))
     while voice_client.is_playing():
-        await asyncio.sleep(0.1)
-    voice_client.stop() 
+        await asyncio.sleep(1)
+    voice_client.stop()
 
 
-def create_tts_mp3(filename, message):
-    tts = gTTS(message, lang='en')
-    tts.save(filename)
-
-
-# Instantiates a client
-client = texttospeech.TextToSpeechClient()
-
-def create_tts_mp3_v2(filename, message):
-    # Set the text input to be synthesized
+def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
-
-    # Build the voice request, select the language code ("en-US") and the ssml
-    # voice gender ("neutral")
     voice = texttospeech.types.VoiceSelectionParams(
-        language_code='en-US', # options: 'en-US', 'en-IN', 'en-GB', 'en-AU'
-        name='en-US-Wavenet-C', # options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Standard-C'
+        language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU'
+        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Standard-C'
         ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
-
-    # Select the type of audio file you want returned
     audio_config = texttospeech.types.AudioConfig(
         audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
-
-    # Perform the text-to-speech request on the text input with the selected
-    # voice parameters and audio file type
     response = client.synthesize_speech(synthesis_input, voice, audio_config)
-
-    # The response's audio_content is binary.
     with open(filename, 'wb') as out:
-        # Write the response to the output file.
         out.write(response.audio_content)
         print(f'Audio content written to file "{filename}"')
 

@@ -1,2 +1,3 @@
 prompt_toolkit
+discord-py[voice]
 google-cloud-texttospeech
