@@ -14,6 +14,7 @@ from storymanager import Story
 from utils import *
 from gpt2generator import GPT2Generator
 
+import typing
 from discord.ext import commands
 from google.cloud import texttospeech
 
@@ -46,6 +47,15 @@ queue = asyncio.Queue()
 
 # TTS setup
 client = texttospeech.TextToSpeechClient()
+
+# Stat Tracker Pro setup
+stats = {
+    "kills": 0,
+    "deaths": 0,
+    "whoopies": 0,
+    "fallbacks": 0,
+    "wholesomes": 0
+}
 
 logger.info('Worker instance started')
 
@@ -117,7 +127,7 @@ def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
     voice = texttospeech.types.VoiceSelectionParams(
         language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU'
-        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Standard-C'
+        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-US-Standard-C', 'en-AU-Wavenet-C'
         ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
     audio_config = texttospeech.types.AudioConfig(
         audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
@@ -317,6 +327,41 @@ async def silence_voice(ctx):
                 if vclient.is_connected():
                     vclient.stop()
                     break
+
+
+@bot.command(name='track', help=f'Tracks stat.')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
+    # if stat is missing trailing 's', just add it here
+    key = stat
+    if not key.endswith("s"):
+        key = f"{key}s"
+
+    if (key in stats):
+        stats[key] += amount
+        with open("tmp/stats.txt", 'w') as out:
+            out.write(f"Kills: {stats['kills']}\n")
+            out.write(f"Deaths: {stats['deaths']}\n")
+            out.write(f"Whoopies: {stats['whoopies']}\n")
+            out.write(f"Fallbacks: {stats['fallbacks']}\n")
+            out.write(f"Wholesomes: {stats['wholesomes']}")
+    else:
+        await ctx.send(f"> Unknown stat {stat}, not tracked. (Valid stat values = {stats.keys()}")
+
+
+@bot.command(name='stats', help='Prints table of current stats.')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def print_stats(ctx):
+    statTable = f"""=== STAT REPORT ===
+    Kills: {stats['kills']}
+    Deaths: {stats['deaths']}
+    Whoopies: {stats['whoopies']}
+    Fallbacks: {stats['fallbacks']}
+    Wholesomes: {stats['wholesomes']}
+    """
+    await ctx.send(statTable)
 
 
 @bot.event
