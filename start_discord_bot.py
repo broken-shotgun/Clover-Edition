@@ -103,12 +103,12 @@ async def on_ready():
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 180, loop=loop)
-                    sent = escape(response)
+                    sent = f"{escape(action)}\n{escape(response)}"
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
-                    await ai_channel.send(sent) # ai_channel.send(sent, tts=True) is much easier, but it always appends "Bot says..."
-                                                # which gets annoying real fast and the voice isn't configurable
+                    await ai_channel.send(f"> {sent}") # ai_channel.send(sent, tts=True) is much easier, but it always appends "Bot says..."
+                                                       # which gets annoying real fast and the voice isn't configurable
         except Exception as err:
             logger.info('Error with message: ', exc_info=True)
 
@@ -151,7 +151,6 @@ async def game_next(ctx, *, text='continue'):
         if action[-1] not in [".", "?", "!"]:
             action = action + "."
         action = first_to_second_person(action)
-        action = "\n> " + action + "\n"
     message = {'channel': ctx.channel.id, 'text': action}
     await queue.put(json.dumps(message))
 
@@ -347,7 +346,7 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
             out.write(f"Fallbacks: {stats['fallbacks']}\n")
             out.write(f"Wholesomes: {stats['wholesomes']}")
     else:
-        await ctx.send(f"> Unknown stat {stat}, not tracked. (Valid stat values = {stats.keys()}")
+        await ctx.send(f"> Unknown stat '{stat}', not tracked. (Valid stat values = {stats.keys()}")
 
 
 @bot.command(name='stats', help='Prints table of current stats.')
