@@ -103,11 +103,11 @@ async def on_ready():
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 180, loop=loop)
-                    sent = f"{escape(action)}\n{escape(response)}"
+                    sent = escape(response)
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
-                    await ai_channel.send(f"> {sent}") # ai_channel.send(sent, tts=True) is much easier, but it always appends "Bot says..."
+                    await ai_channel.send(f"> {escape(action)}\n{sent}") # ai_channel.send(sent, tts=True) is much easier, but it always appends "Bot says..."
                                                        # which gets annoying real fast and the voice isn't configurable
         except Exception as err:
             logger.info('Error with message: ', exc_info=True)
