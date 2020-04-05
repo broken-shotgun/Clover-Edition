@@ -84,6 +84,7 @@ async def on_ready():
         logger.info(f'Processing message: {msg}'); args = json.loads(msg)
         channel, action = args['channel'], args["text"]
         ai_channel = bot.get_channel(channel)
+        # get voice client from channel
         guild = ai_channel.guild
         voice_client = guild.voice_client
         if voice_client and not voice_client.is_connected():
@@ -119,10 +120,15 @@ async def bot_read_message(loop, voice_client, message):
     filename = 'tmp/message.ogg'
     tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
     await asyncio.wait_for(tts_task, 60, loop=loop)
-    voice_client.play(discord.FFmpegOpusAudio(filename))
-    while voice_client.is_playing():
-        await asyncio.sleep(1)
-    voice_client.stop()
+    await bot_play_audio(filename)
+
+
+async def bot_play_audio(voice_client, filename):
+    if voice_client and voice_client.is_connected():
+        voice_client.play(discord.FFmpegOpusAudio(filename))
+        while voice_client.is_playing():
+            await asyncio.sleep(1)
+        voice_client.stop()
 
 
 def create_tts_ogg(filename, message):
@@ -276,14 +282,9 @@ async def game_exit(ctx):
         await game_save(ctx)
         await ctx.send("Exiting game...")
     guild = ctx.message.guild
-    voice_client = guild.voice_client
-    if voice_client:
-        if voice_client.is_connected():
-            await voice_client.disconnect()
-        else:
-            for vc in guild.voice_clients:
-                if vc.is_connected():
-                    await voice_client.disconnect()
+    voice_client = get_active_voice_client(ctx)
+    if voice_client and voice_client.is_connected():
+        await voice_client.disconnect()
     exit()
 
 
@@ -302,32 +303,32 @@ async def join_voice(ctx):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def leave_voice(ctx):
-    guild = ctx.message.guild
-    voice_client = guild.voice_client
-    if voice_client:
-        if voice_client.is_connected():
-            await voice_client.disconnect()
-        else:
-            for vc in guild.voice_clients:
-                if vc.is_connected():
-                    await voice_client.disconnect()
+    voice_client = get_active_voice_client(ctx)
+    if voice_client and voice_client.is_connected():
+        await voice_client.disconnect()
     else:
         await ctx.send("You are not currently in a voice channel")
+
 
 @bot.command(name='silence', help='Ends the current dialogue being read by TTS')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def silence_voice(ctx):
+    voice_client = get_active_voice_client(ctx)
+    if voice_client and voice_client.is_playing():
+        voice_client.stop()
+
+
+def get_active_voice_client(ctx):
     guild = ctx.message.guild
     voice_client = guild.voice_client
     if voice_client:
         if voice_client.is_connected():
-            voice_client.stop()
+            return voice_client
         else:
             for vclient in guild.voice_clients:
                 if vclient.is_connected():
-                    vclient.stop()
-                    break
+                    return vclient
 
 
 @bot.command(name='track', help=f'Tracks stat.')
@@ -347,6 +348,18 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
             out.write(f"Whoopies: {stats['whoopies']}\n")
             out.write(f"Fallbacks: {stats['fallbacks']}\n")
             out.write(f"Wholesomes: {stats['wholesomes']}")
+        # only play sfx if adding a stat
+        if amount > 0:
+            if key == "kills":
+                await bot_play_audio(get_active_voice_client(ctx), "sfx/monster_kill.ogg")
+            elif key == "deaths":
+                await bot_play_audio(get_active_voice_client(ctx), "sfx/im_dying.ogg")
+            elif key == "whoopies":
+                await bot_play_audio(get_active_voice_client(ctx), "sfx/nice.ogg")
+            elif key == "fallbacks":
+                await bot_play_audio(get_active_voice_client(ctx), "sfx/mt_everest.ogg")
+            elif key =="wholesomes":
+                await bot_play_audio(get_active_voice_client(ctx), "sfx/praise_the_sun.ogg")
     else:
         await ctx.send(f"> Unknown stat '{stat}', not tracked. (Valid stat values = {stats.keys()}")
 
