@@ -120,7 +120,7 @@ async def bot_read_message(loop, voice_client, message):
     filename = 'tmp/message.ogg'
     tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
     await asyncio.wait_for(tts_task, 60, loop=loop)
-    await bot_play_audio(filename)
+    await bot_play_audio(voice_client, filename)
 
 
 async def bot_play_audio(voice_client, filename):
