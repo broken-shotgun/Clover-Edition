@@ -23,8 +23,8 @@ bot = commands.Bot(command_prefix='!')
 CHANNEL = 'active-investigations'
 ADMIN_ROLE = 'Chief'
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-EXAMPLE_CONTEXT = "You are Glorpulon, a sausage farmer from Kromula 7.  You are deathly afraid of napkins."
-EXAMPLE_PROMPT = "You are harvesting sausages when all the sudden lava starts rising up from the ground.  Your wife runs out of the house and yells"
+EXAMPLE_CONTEXT = "Your name is Shrek. You are a large green ogre with many internal layers like an onion."
+EXAMPLE_PROMPT = "You live in a small home in a swamp. The swamp is yours but more and more people have begun to trespass. You must kick these people out and defend your swamp."
 
 if DISCORD_TOKEN is None:
     print('Error: DISCORD_TOKEN is not set')
@@ -107,8 +107,10 @@ async def on_ready():
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
-                    await ai_channel.send(f"> {escape(action)}\n{sent}") # ai_channel.send(sent, tts=True) is much easier, but it always appends "Bot says..."
-                                                       # which gets annoying real fast and the voice isn't configurable
+                    # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
+                    # but it always appends "Bot says..." which gets annoying real fast and 
+                    # the voice isn't configurable
+                    await ai_channel.send(f"> {escape(action)}\n{sent}")
         except Exception as err:
             logger.info('Error with message: ', exc_info=True)
 
