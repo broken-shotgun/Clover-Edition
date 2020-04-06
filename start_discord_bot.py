@@ -83,7 +83,7 @@ async def on_ready():
         msg = None
         while not msg: msg = await queue.get()
         logger.info(f'Processing message: {msg}'); args = json.loads(msg)
-        channel, action = args['channel'], args["text"]
+        channel, action = args['channel'], args['action']
         ai_channel = bot.get_channel(channel)
         # get voice client from channel
         guild = ai_channel.guild
@@ -98,7 +98,9 @@ async def on_ready():
         # generate response
         try:
             async with ai_channel.typing():
-                if gm.story is None:
+                if action == "__PLAY_SFX__":
+                    await bot_play_sfx(voice_client, args['sfx_key'])
+                elif gm.story is None:
                     await ai_channel.send("Setting context for new story...")
                     gm.story = Story(generator, escape(action))
                     await ai_channel.send(f"Provide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
@@ -132,6 +134,21 @@ async def bot_play_audio(voice_client, filename):
         voice_client.stop()
 
 
+async def bot_play_sfx(voice_client, sfx_key):
+    if sfx_key == "kills":
+        await bot_play_audio(voice_client, "sfx/monster_kill.ogg")
+    elif sfx_key == "deaths":
+        await bot_play_audio(voice_client, "sfx/im_dying.ogg")
+    elif sfx_key == "whoopies":
+        await bot_play_audio(voice_client, "sfx/nice.ogg")
+    elif sfx_key == "fallbacks":
+        await bot_play_audio(voice_client, "sfx/mt_everest.ogg")
+    elif sfx_key =="wholesomes":
+        await bot_play_audio(voice_client, "sfx/praise_the_sun.ogg")
+    elif sfx_key == "mibs":
+        await bot_play_audio(voice_client, "sfx/men_in_black.ogg")
+
+
 def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
     voice = texttospeech.types.VoiceSelectionParams(
@@ -160,7 +177,7 @@ async def game_next(ctx, *, text='continue'):
         if action[-1] not in [".", "?", "!"]:
             action = action + "."
         action = first_to_second_person(action)
-    message = {'channel': ctx.channel.id, 'text': action}
+    message = {'channel': ctx.channel.id, 'action': action}
     await queue.put(json.dumps(message))
 
 
@@ -357,35 +374,10 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
             out.write(f"Wholesomes: {stats['wholesomes']}")
         # only play sfx if adding a stat
         if amount > 0:
-            if key == "kills":
-                await bot_play_audio(get_active_voice_client(ctx), "sfx/monster_kill.ogg")
-            elif key == "deaths":
-                await bot_play_audio(get_active_voice_client(ctx), "sfx/im_dying.ogg")
-            elif key == "whoopies":
-                await bot_play_audio(get_active_voice_client(ctx), "sfx/nice.ogg")
-            elif key == "fallbacks":
-                await bot_play_audio(get_active_voice_client(ctx), "sfx/mt_everest.ogg")
-            elif key =="wholesomes":
-                await bot_play_audio(get_active_voice_client(ctx), "sfx/praise_the_sun.ogg")
-            elif key == "mibs":
-                await bot_play_audio(get_active_voice_client(ctx), "sfx/men_in_black.ogg")
+            message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': key}
+            await queue.put(json.dumps(message))
     else:
         await ctx.send(f"> Unknown stat '{stat}', not tracked. (Valid stat values = {stats.keys()}")
-
-
-@bot.command(name='stats', help='Prints table of current stats.')
-@commands.has_role(ADMIN_ROLE)
-@is_in_channel()
-async def print_stats(ctx):
-    statTable = f"""=== STAT REPORT ===
-    Kills: {stats['kills']}
-    Deaths: {stats['deaths']}
-    Whoopies: {stats['whoopies']}
-    Fallbacks: {stats['fallbacks']}
-    MIBs: {stats['mibs']}
-    Wholesomes: {stats['wholesomes']}
-    """
-    await ctx.send(statTable)
 
 
 @bot.event
