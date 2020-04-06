@@ -54,6 +54,7 @@ stats = {
     "deaths": 0,
     "whoopies": 0,
     "fallbacks": 0,
+    "mibs": 0,
     "wholesomes": 0
 }
 
@@ -352,6 +353,7 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
             out.write(f"Deaths: {stats['deaths']}\n")
             out.write(f"Whoopies: {stats['whoopies']}\n")
             out.write(f"Fallbacks: {stats['fallbacks']}\n")
+            out.write(f"MIBs: {stats['mibs']}\n")
             out.write(f"Wholesomes: {stats['wholesomes']}")
         # only play sfx if adding a stat
         if amount > 0:
@@ -365,6 +367,8 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
                 await bot_play_audio(get_active_voice_client(ctx), "sfx/mt_everest.ogg")
             elif key =="wholesomes":
                 await bot_play_audio(get_active_voice_client(ctx), "sfx/praise_the_sun.ogg")
+            elif key == "mibs":
+                await bot_play_audio(get_active_voice_client(ctx), "sfx/men_in_black.ogg")
     else:
         await ctx.send(f"> Unknown stat '{stat}', not tracked. (Valid stat values = {stats.keys()}")
 
@@ -378,6 +382,7 @@ async def print_stats(ctx):
     Deaths: {stats['deaths']}
     Whoopies: {stats['whoopies']}
     Fallbacks: {stats['fallbacks']}
+    MIBs: {stats['mibs']}
     Wholesomes: {stats['wholesomes']}
     """
     await ctx.send(statTable)
