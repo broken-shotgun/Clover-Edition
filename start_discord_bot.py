@@ -281,9 +281,15 @@ async def game_exit(ctx):
     if gm.story:
         await game_save(ctx)
         await ctx.send("Exiting game...")
-    voice_client = get_active_voice_client(ctx)
-    if voice_client and voice_client.is_connected():
-        await voice_client.disconnect()
+    guild = ctx.message.guild
+    voice_client = guild.voice_client
+    if voice_client:
+        if voice_client.is_connected():
+            await voice_client.disconnect()
+        else:
+            for client in guild.voice_clients:
+                if client.is_connected():
+                    await client.disconnect()
     exit()
 
 
