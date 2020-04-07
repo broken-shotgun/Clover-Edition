@@ -1,11 +1,12 @@
 import os
 from pathlib import Path
-import itertools
+from typing import Union
+
 import torch
 import torch.nn.functional as F
 import re
-from gpt2 import GPT2LMHeadModel
-from transformers import GPT2Tokenizer
+from gpt2 import GPT2LMHeadModelExperimental
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from getconfig import settings, logger
 from utils import cut_trailing_sentence, output, clear_lines, format_result, use_ptoolkit
 
@@ -20,6 +21,7 @@ logger.info('Cuda Available: {}    Force CPU: {}    Precision: {}'.format(torch.
 # warnings.filterwarnings("ignore")
 MODEL_CLASSES = {
     "gpt2": (GPT2LMHeadModel, GPT2Tokenizer),
+    "gpt2-experimental": (GPT2LMHeadModelExperimental, GPT2Tokenizer),
 }
 
 
@@ -184,7 +186,7 @@ def truncate_multiple_sequences(seqs, max_len=100):
 class GPT2Generator:
     def __init__(
             self, generate_num=60, temperature=0.4, top_k=40, top_p=0.9, dtype=DTYPE,
-            model_path=Path('models', 'pytorch-gpt2-xl-aid2-v5'), repetition_penalty=1,
+            model_path: Union[str, Path] = Path('models', 'pytorch-gpt2-xl-aid2-v5'), repetition_penalty=1,
     ):
         self.generate_num = generate_num
         self.temp = temperature
@@ -197,22 +199,27 @@ class GPT2Generator:
         self.max_history_tokens = 1024 - generate_num
         self.stop_token = "<|endoftext|>"
 
-        self.checkpoint_path = Path(model_path)
-        if not self.checkpoint_path.exists():
-            raise FileNotFoundError(
-                "Could not find {} Make sure to download a pytorch model and put it in the models directory!".format(
-                    str(self.checkpoint_path)))
-
-        if os.environ.get("DEBUG_GPT2", False):
-            self.checkpoint_path = 'gpt2'
+        if isinstance(model_path, str):
+            self.checkpoint_path = model_path
             logger.warning(
-                "using DEBUG_GPT2 MODE! This is just for devs to quickly check a small (124M) GPT2 model with poor output")
+                f"Using DEBUG MODE! This will load one of the generic (non-finetuned) GPT2 models. "
+                f"Selected: {model_path}")
+        elif isinstance(model_path, Path):
+            self.checkpoint_path = model_path
+            if not self.checkpoint_path.exists():
+                raise FileNotFoundError(
+                    "Could not find {} Make sure to download a pytorch model and put it in the models directory!".format(
+                        str(self.checkpoint_path)))
+        else:
+            raise ValueError(f"model_path must be either str or Path, got {type(model_path)}")
+
         self.device = torch.device("cuda" if self.dtype == torch.float16 else "cpu")
         logger.info(
             "Using device={}, checkpoint={}, dtype={}".format(self.device, str(self.checkpoint_path), self.dtype))
 
         # Load tokenizer and model
-        model_class, tokenizer_class = MODEL_CLASSES["gpt2"]
+        model_class, tokenizer_class = MODEL_CLASSES["gpt2-experimental"] if settings.getboolean(
+            "gpt2_experimental") else MODEL_CLASSES["gpt2"]
         self.tokenizer = tokenizer_class.from_pretrained(str(self.checkpoint_path))
         self.model = model_class.from_pretrained(str(self.checkpoint_path))
         self.model.to(self.dtype).to(self.device)
@@ -281,7 +288,6 @@ class GPT2Generator:
 
         context_tokens = memory_merge(prompt, context, self.tokenizer, self.max_history_tokens)
 
-        # if os.environ.get("DEBUG_GPT2", False):
         logger.debug(
             "Text passing into model `%r`",
             self.tokenizer.decode(

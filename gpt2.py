@@ -161,17 +161,22 @@ class GPT2Model(GPT2PreTrainedModel):
         return hidden_states, torch.stack(presents)
 
 
-class GPT2LMHeadModel(GPT2PreTrainedModel):
+class GPT2LMHeadModelExperimental(GPT2PreTrainedModel):
 
     def __init__(self, config):
-        super(GPT2LMHeadModel, self).__init__(config)
+        super(GPT2LMHeadModelExperimental, self).__init__(config)
         self.transformer = GPT2Model(config)
         self.lm_head = torch.nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
         self.init_weights()
+        self.tie_weights()
 
-    def get_output_embeddings(self):
-        return self.lm_head
+    def tie_weights(self):
+        """ Make sure we are sharing the input and output embeddings.
+            Export to TorchScript can't handle parameter sharing so we are cloning them instead.
+        """
+        self._tie_or_clone_weights(self.lm_head,
+                                   self.transformer.wte)
 
     def forward(self, input_ids: torch.Tensor, **kwargs):
         hidden_states, pasts = self.transformer(input_ids, **kwargs)
