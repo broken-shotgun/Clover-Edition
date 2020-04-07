@@ -106,15 +106,41 @@ Once downloaded your model folder should look like this:
         └── vocab.json
 ```
 
-#### Text to Speech
+#### Discord Bot (optional)
 
-Install optional requirements, or just run `pip install --upgrade google-cloud-texttospeech`
+A Discord Bot has been added, to run, you'll need to do some additonal setup.
+
+First make sure you install optional requirements, run:
+
+```bash
+pip install -r optional-requirements.txt
+```
+
+Next setup the following environment variables:
+
+```bash
+DISCORD_TOKEN="<insert_your_discord_bot_token_here>"
+DISCORD_BOT_LOG_URL="<insert_your_papertrail_or_other_log_url_here>"
+```
+
+To start the Dicord Bot, just enter the folder and run `start_discord_bot.py` with python3. From the command line:
+
+```bash
+cd Clover-Edition
+python3 start_discord_bot.py
+```
+
+##### Text to Speech (even more optional)
+
+The Discord Bot is setup to use Google WaveNet text-to-speech voices to read back responses.
 
 To setup WaveNet voices for Text to Speech, we'll need to setup Google Cloud Platform.
 
 Follow the [Quickstart guide](https://cloud.google.com/text-to-speech/docs/quickstart-client-libraries#client-libraries-install-python) and make sure to et `GOOGLE_APPLICATION_CREDENTIALS` to location of JSON file with credentials on your machine.
 
-To play, just enter the folder and run "play.py" with python3. From the command line:
+#### Play
+
+To play locally, just enter the folder and run "play.py" with python3. From the command line:
 
 ```bash
 cd Clover-Edition

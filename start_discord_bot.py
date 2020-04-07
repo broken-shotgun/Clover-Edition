@@ -31,9 +31,9 @@ if DISCORD_TOKEN is None:
     exit(-1)
 
 # log setup
-syslog = SysLogHandler() # sudo service rsyslog start && less +F /var/log/syslog
-# log_host, log_port = os.getenv('LOG_URL').rsplit(':', 1)
-# syslog = SysLogHandler(address=(log_host, int(log_port)))
+# syslog = SysLogHandler() # sudo service rsyslog start && less +F /var/log/syslog
+log_host, log_port = os.getenv('DISCORD_BOT_LOG_URL').rsplit(':', 1)
+syslog = SysLogHandler(address=(log_host, int(log_port)))
 log_format = '%(asctime)s local dungeon_worker: %(message)s'
 log_formatter = logging.Formatter(log_format, datefmt='%b %d %H:%M:%S')
 syslog.setFormatter(log_formatter)
@@ -107,14 +107,14 @@ async def on_ready():
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 180, loop=loop)
-                    sent = escape(response)
+                    sent = f"{escape(action)}\n{escape(response)}"
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
                     # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                     # but it always appends "Bot says..." which gets annoying real fast and 
                     # the voice isn't configurable
-                    await ai_channel.send(f"> {escape(action)}\n{sent}")
+                    await ai_channel.send(f"> {sent}")
         except Exception as err:
             logger.info('Error with message: ', exc_info=True)
 
