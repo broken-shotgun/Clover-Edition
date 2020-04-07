@@ -166,16 +166,19 @@ def create_tts_ogg(filename, message):
 @is_in_channel()
 async def game_next(ctx, *, text='continue'):
     action = text
-    if action[0] == '"':
+    if action[0] == '"' or action[0] == '\'':
         action = "You say " + action
-    else:
-        action = action.strip()
-        if "you" not in action[:6].lower() and "I" not in action[:6]:
-            action = action[0].lower() + action[1:]
-            action = "You " + action
-        if action[-1] not in [".", "?", "!"]:
-            action = action + "."
-        action = first_to_second_person(action)
+    action = re.sub("^(?: *you +)*(.+)$", "You \\1", action, flags=re.I)
+    user_speech_regex = re.search(r"^(?: *you +say +)?([\"'].*[\"'])$", action, flags=re.I)
+    user_action_regex = re.search(r"^(?: *you +)(.+)$", action, flags=re.I)
+    if user_speech_regex:
+        action = user_speech_regex.group(1)
+        action = "You say " + action
+        action = end_sentence(action)
+    elif user_action_regex:
+        action = first_to_second_person(user_action_regex.group(1))
+        action = "You" + action
+        action = end_sentence(action)
     message = {'channel': ctx.channel.id, 'action': action}
     await queue.put(json.dumps(message))
 
@@ -214,8 +217,7 @@ async def game_revert(ctx):
     if not gm.story or len(gm.story.actions) == 0:
         await ctx.send("You can't go back any farther.")
         return
-    gm.story.actions = gm.story.actions[:-1]
-    gm.story.results = gm.story.results[:-1]
+    gm.story.revert()
     await ctx.send("Last action reverted.")
     if len(gm.story.results) > 0:
         await ctx.send(gm.story.results[-1])
