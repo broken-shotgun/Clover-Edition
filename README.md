@@ -75,6 +75,8 @@ Then you will need to download a pytorch model and put it in the models folder:
 
 #### Models
 
+Thanks to @Rioghasarig, the models are available to download at this site: http://www.clover-browser.info/
+
 The pytorch version of the original AID2 model is being distributed by bittorrent:
 
 [Torrent File](model.torrent)

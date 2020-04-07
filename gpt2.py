@@ -2,7 +2,13 @@ import math
 
 import torch
 from transformers.configuration_gpt2 import GPT2Config
-from transformers.modeling_gpt2 import load_tf_weights_in_gpt2, gelu, GPT2PreTrainedModel
+from transformers.modeling_gpt2 import GPT2PreTrainedModel
+
+
+
+def gelu(x):
+    srqt_2_pi = 0.7978845608
+    return .5 * x * (1 + torch.tanh(srqt_2_pi * (x + .044715 * (x ** 3))))
 
 
 class Conv1D(torch.nn.Module):
