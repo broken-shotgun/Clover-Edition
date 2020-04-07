@@ -27,7 +27,7 @@ EXAMPLE_CONTEXT = "Your name is Shrek. You are a large green ogre with many inte
 EXAMPLE_PROMPT = "You live in a small home in a swamp. The swamp is yours but more and more people have begun to trespass. You must kick these people out and defend your swamp."
 
 if DISCORD_TOKEN is None:
-    print('Error: DISCORD_TOKEN is not set')
+    logger.error('Error: DISCORD_TOKEN is not set')
     exit(-1)
 
 # log setup
@@ -73,7 +73,6 @@ def escape(text):
 
 @bot.event
 async def on_ready():
-    print("Bot is ready\n")
     logger.info('Bot is ready')
     loop = asyncio.get_event_loop()
     if gm.story:
@@ -116,7 +115,7 @@ async def on_ready():
                     # the voice isn't configurable
                     await ai_channel.send(f"> {sent}")
         except Exception as err:
-            logger.info('Error with message: ', exc_info=True)
+            logger.error('Error with message: ', exc_info=True)
 
 
 async def bot_read_message(loop, voice_client, message):
@@ -160,7 +159,7 @@ def create_tts_ogg(filename, message):
     response = client.synthesize_speech(synthesis_input, voice, audio_config)
     with open(filename, 'wb') as out:
         out.write(response.audio_content)
-        print(f'Audio content written to file "{filename}"')
+        logger.info(f'Audio content written to file "{filename}"')
 
 
 @bot.command(name='next', help='Continues AI Dungeon game')
