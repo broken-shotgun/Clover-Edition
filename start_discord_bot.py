@@ -32,7 +32,7 @@ if DISCORD_TOKEN is None:
 
 # log setup
 # syslog = SysLogHandler() # sudo service rsyslog start && less +F /var/log/syslog
-log_host, log_port = os.getenv('DISCORD_BOT_LOG_URL').rsplit(':', 1)
+log_host, log_port = os.getenv('DISCORD_BOT_LOG_URL', 'localhost:514').rsplit(':', 1)
 syslog = SysLogHandler(address=(log_host, int(log_port)))
 log_format = '%(asctime)s local dungeon_worker: %(message)s'
 log_formatter = logging.Formatter(log_format, datefmt='%b %d %H:%M:%S')
@@ -152,7 +152,7 @@ def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
     voice = texttospeech.types.VoiceSelectionParams(
         language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU'
-        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-US-Standard-C', 'en-AU-Wavenet-C'
+        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A'
         ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
     audio_config = texttospeech.types.AudioConfig(
         audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
