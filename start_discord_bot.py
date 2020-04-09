@@ -91,10 +91,14 @@ async def on_ready():
             async with ai_channel.typing():
                 if action == "__PLAY_SFX__":
                     await bot_play_sfx(voice_client, args['sfx_key'])
+                elif action == "__LOAD_GAME__":
+                    message = args['message']
+                    if voice_client and voice_client.is_connected():
+                        await bot_read_message(loop, voice_client, message)
+                    await ai_channel.send(f"> {message}")
                 elif gm.story is None:
-                    await ai_channel.send("Setting context for new story...")
                     gm.story = Story(generator, escape(action))
-                    await ai_channel.send(f"Provide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
+                    await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
@@ -228,20 +232,6 @@ async def game_newgame(ctx):
     await ctx.send(f"\n==========\nNew game\n==========\nProvide intial context with !next (Ex. {EXAMPLE_CONTEXT})")
 
 
-@bot.command(name='restart', help='Restarts the game from initial prompt')
-@commands.has_role(ADMIN_ROLE)
-@is_in_channel()
-async def game_restart(ctx):
-    if not gm.story:
-        await ctx.send(f"Provide intial context with !next (Ex. {EXAMPLE_CONTEXT})")
-        return
-    gm.story.savefile = ""
-    gm.story.actions = []
-    gm.story.results = []
-    gm.story.memory = []
-    await ctx.send(f"Restarted game from beginning\n{gm.story.context}")
-
-
 @bot.command(name='save', help='Saves the current game')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
@@ -262,24 +252,26 @@ async def game_save(ctx, text=str(uuid.uuid1())):
 async def game_load(ctx, *, text='save_game_id'):
     with open(f"saves/{text}.json", 'r', encoding="utf-8") as file:
         try:
-            if not gm.story:
-                gm.story = Story(generator)
+            gm.story = Story(generator)
             savefile = os.path.splitext(file.name.strip())[0]
             savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
             gm.story.savefile = savefile
             gm.story.from_json(file.read())
         except FileNotFoundError:
             await ctx.send("Save file not found.")
+            return
         except IOError:
             await ctx.send("Something went wrong; aborting.")
+            return
     last_prompt = gm.story.actions[-1] if len(gm.story.actions) > 0 else ""
     last_result = gm.story.results[-1] if len(gm.story.results) > 0 else ""
-    game_load_message = f"\nLoading Game...\n{gm.story.context}"
+    game_load_message = f"Previously on AI Dungeon...\n{gm.story.context}"
     if last_prompt and len(last_prompt) > 0:
-        game_load_message = game_load_message + f"\n> {last_prompt}"
+        game_load_message = game_load_message + f"\n{last_prompt}"
     if last_result and len(last_result) > 0:
-        game_load_message = game_load_message + f"\n {last_result}"
-    await ctx.send(game_load_message)
+        game_load_message = game_load_message + f"\n{last_result}"
+    message = {'channel': ctx.channel.id, 'action': '__LOAD_GAME__', 'message': game_load_message}
+    await queue.put(json.dumps(message))
 
 
 @bot.command(name='exit', help='Saves and exits the current game')
