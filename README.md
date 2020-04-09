@@ -118,10 +118,12 @@ First make sure you install optional requirements, run:
 pip install -r optional-requirements.txt
 ```
 
-Next setup the following environment variables:
+Next setup the following environment variables, only `DISCORD_BOT_TOKEN` is required:
 
 ```bash
-DISCORD_TOKEN="<insert_your_discord_bot_token_here>"
+DISCORD_BOT_TOKEN="<insert_your_discord_bot_token_here>"
+DISCORD_BOT_CHANNEL="<active_channel_bot_should_listen_for_commands>"
+DISCORD_BOT_ADMIN_ROLE="<admin_role_for_admin_commands>"
 DISCORD_BOT_LOG_URL="<insert_your_papertrail_or_other_log_url_here>"
 ```
 

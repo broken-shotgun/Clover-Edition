@@ -13,18 +13,17 @@ from google.cloud import texttospeech
 
 # bot setup
 bot = commands.Bot(command_prefix='!')
-CHANNEL = 'active-investigations'
-ADMIN_ROLE = 'Chief'
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+CHANNEL = os.getenv('DISCORD_BOT_CHANNEL', 'general')
+ADMIN_ROLE = os.getenv('DISCORD_BOT_ADMIN_ROLE', 'admin')
+DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 EXAMPLE_CONTEXT = "Your name is Shrek. You are a large green ogre with many internal layers like an onion."
 EXAMPLE_PROMPT = "You live in a small home in a swamp. The swamp is yours but more and more people have begun to trespass. You must kick these people out and defend your swamp."
 
 if DISCORD_TOKEN is None:
-    logger.error('Error: DISCORD_TOKEN is not set')
+    logger.error('Error: DISCORD_BOT_TOKEN is not set')
     exit(-1)
 
 # log setup
-# syslog = SysLogHandler() # sudo service rsyslog start && less +F /var/log/syslog
 log_host, log_port = os.getenv('DISCORD_BOT_LOG_URL', 'localhost:514').rsplit(':', 1)
 syslog = SysLogHandler(address=(log_host, int(log_port)))
 log_format = '%(asctime)s local dungeon_worker: %(message)s'
@@ -41,7 +40,7 @@ queue = asyncio.Queue()
 # TTS setup
 client = texttospeech.TextToSpeechClient()
 
-# Stat Tracker Pro setup
+# stat tracker setup
 stats = {
     "kills": 0,
     "deaths": 0,
@@ -98,7 +97,7 @@ async def on_ready():
                     await ai_channel.send(f"Provide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
-                    response = await asyncio.wait_for(task, 180, loop=loop)
+                    response = await asyncio.wait_for(task, 120, loop=loop)
                     sent = f"{escape(action)}\n{escape(response)}"
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
