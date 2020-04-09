@@ -210,11 +210,10 @@ async def game_revert(ctx):
         await ctx.send("You can't go back any farther.")
         return
     gm.story.revert()
-    await ctx.send("Last action reverted.")
     if len(gm.story.results) > 0:
-        await ctx.send(gm.story.results[-1])
+        await ctx.send(f"Last action reverted.\n{gm.story.results[-1]}")
     else:
-        await ctx.send(gm.story.context)
+        await ctx.send(f"Last action reverted.\n{gm.story.context}")
 
 
 @bot.command(name='newgame', help='Starts a new game')
@@ -240,8 +239,7 @@ async def game_restart(ctx):
     gm.story.actions = []
     gm.story.results = []
     gm.story.memory = []
-    await ctx.send('Restarted game from beginning')
-    await ctx.send(gm.story.context)
+    await ctx.send(f"Restarted game from beginning\n{gm.story.context}")
 
 
 @bot.command(name='save', help='Saves the current game')
@@ -255,18 +253,17 @@ async def game_save(ctx, text=str(uuid.uuid1())):
     else:
         savefile = gm.story.savefile
     save_story(gm.story, savefile)
-    await ctx.send("Game saved.")
-    await ctx.send(f"To load the game, type '!load {savefile}'")
+    await ctx.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
 
 
 @bot.command(name='load', help='Load the game with given ID')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_load(ctx, *, text='save_game_id'):
-    if not gm.story:
-        gm.story = Story(generator)
     with open(f"saves/{text}.json", 'r', encoding="utf-8") as file:
         try:
+            if not gm.story:
+                gm.story = Story(generator)
             savefile = os.path.splitext(file.name.strip())[0]
             savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
             gm.story.savefile = savefile
@@ -277,12 +274,12 @@ async def game_load(ctx, *, text='save_game_id'):
             await ctx.send("Something went wrong; aborting.")
     last_prompt = gm.story.actions[-1] if len(gm.story.actions) > 0 else ""
     last_result = gm.story.results[-1] if len(gm.story.results) > 0 else ""
-    await ctx.send("\nLoading Game...\n")
-    await ctx.send(gm.story.context)
+    game_load_message = f"\nLoading Game...\n{gm.story.context}"
     if last_prompt and len(last_prompt) > 0:
-        await ctx.send(last_prompt)
+        game_load_message = game_load_message + f"\n> {last_prompt}"
     if last_result and len(last_result) > 0:
-        await ctx.send(last_result)
+        game_load_message = game_load_message + f"\n {last_result}"
+    await ctx.send(game_load_message)
 
 
 @bot.command(name='exit', help='Saves and exits the current game')
