@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
-import os
-import random
-import sys
-import time
-import uuid
-
-import re, json, logging, asyncio, discord
+import asyncio, json, logging, os, random, re, sys, time, typing, uuid
 from logging.handlers import SysLogHandler
 
-from play import GameManager
-from play import get_generator, save_story
+from play import GameManager, get_generator, save_story
 from storymanager import Story
 from utils import *
 from gpt2generator import GPT2Generator
 
-import typing
+import discord
 from discord.ext import commands
 from google.cloud import texttospeech
 
@@ -363,7 +356,6 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
     key = stat
     if not key.endswith("s"):
         key = f"{key}s"
-
     if (key in stats):
         stats[key] += amount
         with open("tmp/stats.txt", 'w') as out:
