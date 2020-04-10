@@ -118,7 +118,7 @@ async def bot_read_message(loop, voice_client, message):
     try:
         filename = 'tmp/message.ogg'
         tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
-        await asyncio.wait_for(tts_task, 60, loop=loop)
+        await asyncio.wait_for(tts_task, 90, loop=loop)
         await bot_play_audio(voice_client, filename)
     except Exception as err:
         logger.error(f"Error attempting to generate/play TTS for '{message}': ", exc_info=True)
