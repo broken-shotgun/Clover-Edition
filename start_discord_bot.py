@@ -102,23 +102,26 @@ async def on_ready():
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
-                    sent = f"{escape(action)}\n{escape(response)}"
+                    sent = escape(response)
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
                     # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                     # but it always appends "Bot says..." which gets annoying real fast and 
                     # the voice isn't configurable
-                    await ai_channel.send(f"> {sent}")
+                    await ai_channel.send(f"> {escape(action)}\n{sent}")
         except Exception as err:
-            logger.error('Error with message: ', exc_info=True)
+            logger.error("Error with message: ", exc_info=True)
 
 
 async def bot_read_message(loop, voice_client, message):
-    filename = 'tmp/message.ogg'
-    tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
-    await asyncio.wait_for(tts_task, 60, loop=loop)
-    await bot_play_audio(voice_client, filename)
+    try:
+        filename = 'tmp/message.ogg'
+        tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
+        await asyncio.wait_for(tts_task, 60, loop=loop)
+        await bot_play_audio(voice_client, filename)
+    except Exception as err:
+        logger.error(f"Error attempting to generate/play TTS for '{message}': ", exc_info=True)
 
 
 async def bot_play_audio(voice_client, filename):
@@ -147,8 +150,8 @@ async def bot_play_sfx(voice_client, sfx_key):
 def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
     voice = texttospeech.types.VoiceSelectionParams(
-        language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU'
-        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A'
+        language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU', 'de-DE'
+        name='en-US-Wavenet-F', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
         ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
     audio_config = texttospeech.types.AudioConfig(
         audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
