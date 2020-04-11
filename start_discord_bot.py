@@ -165,19 +165,23 @@ def create_tts_ogg(filename, message):
 @is_in_channel()
 async def game_next(ctx, *, text='continue'):
     action = text
-    if action[0] == '"' or action[0] == '\'':
+    if action[0] == '!':
+        action = action[1:]
+        logger.info(f'Interpretting action as literal, skip action formatting.')
+    elif action[0] == '"' or action[0] == '\'':
         action = "You say " + action
-    action = re.sub("^(?: *you +)*(.+)$", "You \\1", action, flags=re.I)
-    user_speech_regex = re.search(r"^(?: *you +say +)?([\"'].*[\"'])$", action, flags=re.I)
-    user_action_regex = re.search(r"^(?: *you +)(.+)$", action, flags=re.I)
-    if user_speech_regex:
-        action = user_speech_regex.group(1)
-        action = "You say " + action
-        action = end_sentence(action)
-    elif user_action_regex:
-        action = first_to_second_person(user_action_regex.group(1))
-        action = "You" + action
-        action = end_sentence(action)
+    else:
+        action = re.sub("^(?: *you +)*(.+)$", "You \\1", action, flags=re.I)
+        user_speech_regex = re.search(r"^(?: *you +say +)?([\"'].*[\"'])$", action, flags=re.I)
+        user_action_regex = re.search(r"^(?: *you +)(.+)$", action, flags=re.I)
+        if user_speech_regex:
+            action = user_speech_regex.group(1)
+            action = "You say " + action
+            action = end_sentence(action)
+        elif user_action_regex:
+            action = first_to_second_person(user_action_regex.group(1))
+            action = "You" + action
+            action = end_sentence(action)
     message = {'channel': ctx.channel.id, 'action': action}
     await queue.put(json.dumps(message))
 
