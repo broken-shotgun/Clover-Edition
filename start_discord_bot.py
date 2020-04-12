@@ -102,14 +102,14 @@ async def on_ready():
                 else:
                     task = loop.run_in_executor(None, gm.story.act, action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
-                    sent = escape(response)
+                    sent = f"{escape(action)}\n{escape(response)}"
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
                     # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                     # but it always appends "Bot says..." which gets annoying real fast and 
                     # the voice isn't configurable
-                    await ai_channel.send(f"> {escape(action)}\n{sent}")
+                    await ai_channel.send(f"> {sent}")
         except Exception as err:
             logger.error("Error with message: ", exc_info=True)
 
@@ -145,6 +145,8 @@ async def bot_play_sfx(voice_client, sfx_key):
         await bot_play_audio(voice_client, "sfx/praise_the_sun.ogg")
     elif sfx_key == "mibs":
         await bot_play_audio(voice_client, "sfx/men_in_black.ogg")
+    elif sfx_key == "whoami":
+        await bot_play_audio(voice_client, "sfx/hello.ogg")
 
 
 def create_tts_ogg(filename, message):
@@ -366,6 +368,16 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
             await queue.put(json.dumps(message))
     else:
         await ctx.send(f"> Unknown stat '{stat}', not tracked. (Valid stat values = {stats.keys()}")
+
+
+@bot.command(name='hello', help=f'Sets character currently playing as.')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def track_whoami(ctx, character):
+    with open("tmp/whoami.txt", 'w') as out:
+        out.write(f"Currently playing as: {character}")
+    message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': 'whoami'}
+    await queue.put(json.dumps(message))
 
 
 @bot.event
