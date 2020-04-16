@@ -1,2 +1,3 @@
+profanityfilter
 torch
 transformers==2.3.0

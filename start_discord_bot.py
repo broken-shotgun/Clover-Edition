@@ -375,9 +375,19 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
 @is_in_channel()
 async def track_whoami(ctx, character):
     with open("tmp/whoami.txt", 'w') as out:
-        out.write(f"Currently playing as: {character}")
+        out.write(f" Currently playing as: {character}")
     message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': 'whoami'}
     await queue.put(json.dumps(message))
+
+
+@bot.command(name='censor', help='Toggles censor (on/off)')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def toggle_censor(ctx, state='on'):
+    if not gm.story:
+        return
+    gm.story.censor = state == 'on'
+    await ctx.send(f"Censor is {'on' if gm.story.censor else 'off'}")
 
 
 @bot.event

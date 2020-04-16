@@ -2,17 +2,26 @@ import json
 import re
 from getconfig import settings
 from utils import output, format_result, format_input, get_similarity
+from profanityfilter import ProfanityFilter
 
+with open("data/censored_words.txt", "r") as f:
+    censored_words = [l.replace("\n", "") for l in f.readlines()]
+
+pf = ProfanityFilter(custom_censor_list=censored_words)
+
+def remove_profanity(text):
+    return pf.censor(text)
 
 class Story:
     # the initial prompt is very special.
     # We want it to be permanently in the AI's limited memory (as well as possibly other strings of text.)
-    def __init__(self, generator, context='', memory=None):
+    def __init__(self, generator, context='', memory=None, censor=True):
         if memory is None:
             memory = []
         self.generator = generator
         self.context = context
         self.memory = memory
+        self.censor = censor
         self.actions = []
         self.results = []
         self.savefile = ""
@@ -27,6 +36,8 @@ class Story:
             top_p=settings.getfloat('top-p'),
             top_k=settings.getint('top-keks'),
             repetition_penalty=settings.getfloat('rep-pen'))
+        if self.censor:
+            result = remove_profanity(result)
         if record:
             self.actions.append(format_input(action))
             self.results.append(format_input(result))
@@ -91,6 +102,7 @@ class Story:
         res["memory"] = self.memory
         res["actions"] = self.actions
         res["results"] = self.results
+        res["censor"] = self.censor
         return res
 
     def from_dict(self, d):
@@ -102,6 +114,7 @@ class Story:
         self.memory = d["memory"]
         self.actions = d["actions"]
         self.results = d["results"]
+        self.censor = d.get("censor", True)
 
     def to_json(self):
         return json.dumps(self.to_dict())
