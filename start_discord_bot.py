@@ -2,7 +2,7 @@
 import asyncio, json, logging, os, random, re, sys, time, typing, uuid
 from logging.handlers import SysLogHandler
 
-from play import GameManager, get_generator, save_story
+from play import get_generator, save_story
 from storymanager import Story
 from utils import *
 from gpt2generator import GPT2Generator
@@ -34,7 +34,6 @@ logger.addHandler(syslog)
 logger.setLevel(logging.INFO)
 
 generator = get_generator()
-gm = GameManager(generator)
 queue = asyncio.Queue()
 
 # TTS setup
@@ -52,23 +51,13 @@ stats = {
 
 logger.info('Worker instance started')
 
-def is_in_channel():
-    async def predicate(ctx):
-        return ctx.message.channel.name == CHANNEL
-    return commands.check(predicate)
-
-
-def escape(text):
-    text = re.sub(r'\\(\*|_|`|~|\\|>)', r'\g<1>', text)
-    return re.sub(r'(\*|_|`|~|\\|>)', r'\\\g<1>', text)
-
 
 @bot.event
 async def on_ready():
     logger.info('Bot is ready')
     loop = asyncio.get_event_loop()
-    if gm.story:
-        gm.story = None
+    story = None
+    censor = True
     while True:
         # poll queue for messages, block here if empty
         msg = None
@@ -81,26 +70,88 @@ async def on_ready():
         voice_client = guild.voice_client
         if voice_client and not voice_client.is_connected():
             logger.info('original voice client disconnected, finding new client...')
-            for vc in guild.voice_clients:
-                if vc.is_connected():
+            for client in guild.voice_clients:
+                if client.is_connected():
                     logger.info('new voice client found!')
-                    voice_client = vc
+                    voice_client = client
                     break
         # generate response
         try:
             async with ai_channel.typing():
-                if action == "__PLAY_SFX__":
+                if action == "__EXIT__": 
+                    if voice_client:
+                        if voice_client.is_connected():
+                            await voice_client.disconnect()
+                        else:
+                            for client in guild.voice_clients:
+                                if client.is_connected():
+                                    await client.disconnect()
+                    await ai_channel.send("Exiting game...")
+                    exit()
+                elif action == "__PLAY_SFX__":
                     await bot_play_sfx(voice_client, args['sfx_key'])
-                elif action == "__LOAD_GAME__":
-                    message = args['message']
-                    if voice_client and voice_client.is_connected():
-                        await bot_read_message(loop, voice_client, message)
-                    await ai_channel.send(f"> {message}")
-                elif gm.story is None:
-                    gm.story = Story(generator, escape(action))
+                elif action == "__NEW_GAME__":
+                    context = args['context']
+                    story = Story(generator, escape(context), censor=censor)
                     await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
+                elif action == "__LOAD_GAME__":
+                    save_game_id = args['save_game_id']
+                    with open(f"saves/{save_game_id}.json", 'r', encoding="utf-8") as file:
+                        try:
+                            story = Story(generator)
+                            savefile = os.path.splitext(file.name.strip())[0]
+                            savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
+                            story.savefile = savefile
+                            story.from_json(file.read())
+                            last_prompt = story.actions[-1] if len(story.actions) > 0 else ""
+                            last_result = story.results[-1] if len(story.results) > 0 else ""
+                            game_load_message = f"Previously on AI Dungeon...\n{story.context}"
+                            if last_prompt and len(last_prompt) > 0:
+                                game_load_message = game_load_message + f"\n{last_prompt}"
+                            if last_result and len(last_result) > 0:
+                                game_load_message = game_load_message + f"\n{last_result}"
+                            if voice_client and voice_client.is_connected():
+                                await bot_read_message(loop, voice_client, game_load_message)
+                            await ai_channel.send(f"> {game_load_message}")
+                        except FileNotFoundError:
+                            await ai_channel.send("Save file not found.")
+                        except IOError:
+                            await ai_channel.send("Something went wrong; aborting.")
+                elif not story:
+                    await ai_channel.send(f"No story loaded.\nStart one with !newgame (Ex. {EXAMPLE_CONTEXT}) or !load save_game_id")
+                elif action == "__SAVE_GAME__":
+                    if not story.savefile or len(story.savefile.strip()) == 0:
+                        savefile = args['savefile']
+                    else:
+                        savefile = story.savefile
+                    save_story(story, savefile)
+                    await ai_channel.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
+                elif action == "__REMEMBER__":
+                    memory = args['memory']
+                    story.memory.append(memory[0].upper() + memory[1:] + ".")
+                    await ai_channel.send(f"You remember {memory}.")
+                elif action == "__FORGET__":
+                    if len(story.memory) == 0:
+                        await ai_channel.send("There is nothing to forget.")
+                    else:
+                        last_memory = story.memory[-1]
+                        story.memory = story.memory[:-1]
+                        await ai_channel.send(f"You forget {last_memory}.")
+                elif action == "__REVERT__":
+                    if len(story.actions) == 0:
+                        await ai_channel.send("You can't go back any farther.")
+                    else:
+                        story.revert()
+                        if len(story.results) > 0:
+                            await ai_channel.send(f"Last action reverted.\n{story.results[-1]}")
+                        else:
+                            await ai_channel.send(f"Last action reverted.\n{story.context}")
+                elif action == "__TOGGLE_CENSOR__":
+                    censor = args['censor']
+                    story.censor = censor
+                    await ai_channel.send(f"Censor is {'on' if censor else 'off'}")
                 else:
-                    task = loop.run_in_executor(None, gm.story.act, action)
+                    task = loop.run_in_executor(None, story.act, action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
                     sent = f"{escape(action)}\n{escape(response)}"
                     # handle tts if in a voice channel
@@ -163,6 +214,29 @@ def create_tts_ogg(filename, message):
         logger.info(f'Audio content written to file "{filename}"')
 
 
+def get_active_voice_client(ctx):
+    guild = ctx.message.guild
+    voice_client = guild.voice_client
+    if voice_client:
+        if voice_client.is_connected():
+            return voice_client
+        else:
+            for client in guild.voice_clients:
+                if client.is_connected():
+                    return client
+
+
+def is_in_channel():
+    async def predicate(ctx):
+        return ctx.message.channel.name == CHANNEL
+    return commands.check(predicate)
+
+
+def escape(text):
+    text = re.sub(r'\\(\*|_|`|~|\\|>)', r'\g<1>', text)
+    return re.sub(r'(\*|_|`|~|\\|>)', r'\\\g<1>', text)
+
+
 @bot.command(name='next', help='Continues AI Dungeon game')
 @is_in_channel()
 async def game_next(ctx, *, text='continue'):
@@ -191,16 +265,14 @@ async def game_next(ctx, *, text='continue'):
 @bot.command(name='remember', help='Commits something permanently to the AI\'s memory')
 @is_in_channel()
 async def game_remember(ctx, *, text=''):
-    if not gm.story:
-        return
     memory = text
     if len(memory) > 0:
         memory = re.sub("^[Tt]hat +(.*)", "\\1", memory)
         memory = memory.strip('.')
         memory = memory.strip('!')
         memory = memory.strip('?')
-        gm.story.memory.append(memory[0].upper() + memory[1:] + ".")
-        await ctx.send(f"You remember {memory}.")
+        message = {'channel': ctx.channel.id, 'action': '__REMEMBER__', 'memory': memory}
+        await queue.put(json.dumps(message))
     else:
         await ctx.send("Please enter something valid to remember.")
 
@@ -208,78 +280,39 @@ async def game_remember(ctx, *, text=''):
 @bot.command(name='forget', help='Reverts the previous memory')
 @is_in_channel()
 async def game_forget(ctx):
-    if not gm.story or len(gm.story.memory) == 0:
-        await ctx.send("There is nothing to forget.")
-        return
-    last_memory = gm.story.memory[-1]
-    gm.story.memory = gm.story.memory[:-1]
-    await ctx.send(f"You forget {last_memory}.")
+    message = {'channel': ctx.channel.id, 'action': '__FORGET__'}
+    await queue.put(json.dumps(message))
 
 
 @bot.command(name='revert', help='Reverts the previous action')
 @is_in_channel()
 async def game_revert(ctx):
-    if not gm.story or len(gm.story.actions) == 0:
-        await ctx.send("You can't go back any farther.")
-        return
-    gm.story.revert()
-    if len(gm.story.results) > 0:
-        await ctx.send(f"Last action reverted.\n{gm.story.results[-1]}")
-    else:
-        await ctx.send(f"Last action reverted.\n{gm.story.context}")
+    message = {'channel': ctx.channel.id, 'action': '__REVERT__'}
+    await queue.put(json.dumps(message))
 
 
-@bot.command(name='newgame', help='Starts a new game')
+@bot.command(name='newgame', help='Starts a new game with new context')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def game_newgame(ctx):
-    if not gm.story:
-        await ctx.send(f"Provide intial context with !next (Ex. {EXAMPLE_CONTEXT})")
-        return
+async def game_newgame(ctx, *, text='continue'):
     await game_save(ctx)
-    gm.story = None
-    await ctx.send(f"\n==========\nNew game\n==========\nProvide intial context with !next (Ex. {EXAMPLE_CONTEXT})")
+    message = {'channel': ctx.channel.id, 'action': '__NEW_GAME__', 'context': text}
+    await queue.put(json.dumps(message))
 
 
 @bot.command(name='save', help='Saves the current game')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_save(ctx, text=str(uuid.uuid1())):
-    if not gm.story:
-        return
-    if not gm.story.savefile or len(gm.story.savefile.strip()) == 0:
-        savefile = text
-    else:
-        savefile = gm.story.savefile
-    save_story(gm.story, savefile)
-    await ctx.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
+    message = {'channel': ctx.channel.id, 'action': '__SAVE_GAME__', 'savefile': text}
+    await queue.put(json.dumps(message))
 
 
 @bot.command(name='load', help='Load the game with given ID')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_load(ctx, *, text='save_game_id'):
-    with open(f"saves/{text}.json", 'r', encoding="utf-8") as file:
-        try:
-            gm.story = Story(generator)
-            savefile = os.path.splitext(file.name.strip())[0]
-            savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
-            gm.story.savefile = savefile
-            gm.story.from_json(file.read())
-        except FileNotFoundError:
-            await ctx.send("Save file not found.")
-            return
-        except IOError:
-            await ctx.send("Something went wrong; aborting.")
-            return
-    last_prompt = gm.story.actions[-1] if len(gm.story.actions) > 0 else ""
-    last_result = gm.story.results[-1] if len(gm.story.results) > 0 else ""
-    game_load_message = f"Previously on AI Dungeon...\n{gm.story.context}"
-    if last_prompt and len(last_prompt) > 0:
-        game_load_message = game_load_message + f"\n{last_prompt}"
-    if last_result and len(last_result) > 0:
-        game_load_message = game_load_message + f"\n{last_result}"
-    message = {'channel': ctx.channel.id, 'action': '__LOAD_GAME__', 'message': game_load_message}
+    message = {'channel': ctx.channel.id, 'action': '__LOAD_GAME__', 'save_game_id': text}
     await queue.put(json.dumps(message))
 
 
@@ -287,19 +320,9 @@ async def game_load(ctx, *, text='save_game_id'):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_exit(ctx):
-    if gm.story:
-        await game_save(ctx)
-        await ctx.send("Exiting game...")
-    guild = ctx.message.guild
-    voice_client = guild.voice_client
-    if voice_client:
-        if voice_client.is_connected():
-            await voice_client.disconnect()
-        else:
-            for client in guild.voice_clients:
-                if client.is_connected():
-                    await client.disconnect()
-    exit()
+    await game_save(ctx)
+    message = {'channel': ctx.channel.id, 'action': '__EXIT__'}
+    await queue.put(json.dumps(message))
 
 
 @bot.command(name='join', help='Join the voice channel of the user')
@@ -333,18 +356,6 @@ async def silence_voice(ctx):
         voice_client.stop()
 
 
-def get_active_voice_client(ctx):
-    guild = ctx.message.guild
-    voice_client = guild.voice_client
-    if voice_client:
-        if voice_client.is_connected():
-            return voice_client
-        else:
-            for vclient in guild.voice_clients:
-                if vclient.is_connected():
-                    return vclient
-
-
 @bot.command(name='track', help=f'Tracks stat.')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
@@ -373,7 +384,7 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
 @bot.command(name='hello', help=f'Sets character currently playing as.')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def track_whoami(ctx, character):
+async def track_whoami(ctx, *, character):
     with open("tmp/whoami.txt", 'w') as out:
         out.write(f" Currently playing as: {character}")
     message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': 'whoami'}
@@ -384,10 +395,8 @@ async def track_whoami(ctx, character):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def toggle_censor(ctx, state='on'):
-    if not gm.story:
-        return
-    gm.story.censor = state == 'on'
-    await ctx.send(f"Censor is {'on' if gm.story.censor else 'off'}")
+    message = {'channel': ctx.channel.id, 'action': '__TOGGLE_CENSOR__', 'censor': (state == 'on')}
+    await queue.put(json.dumps(message))
 
 
 @bot.event
