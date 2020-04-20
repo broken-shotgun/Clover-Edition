@@ -150,10 +150,12 @@ async def on_ready():
                     censor = args['censor']
                     story.censor = censor
                     await ai_channel.send(f"Censor is {'on' if censor else 'off'}")
-                else:
-                    task = loop.run_in_executor(None, story.act, action)
+                elif action == "__NEXT__":
+                    user = args['user_id']
+                    story_action = args['story_action']
+                    task = loop.run_in_executor(None, story.act, story_action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
-                    sent = f"{escape(action)}\n{escape(response)}"
+                    sent = f"{escape(story_action)}\n{escape(response)}"
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
                         await bot_read_message(loop, voice_client, sent)
@@ -161,6 +163,8 @@ async def on_ready():
                     # but it always appends "Bot says..." which gets annoying real fast and 
                     # the voice isn't configurable
                     await ai_channel.send(f"> {sent}")
+                else:
+                    logger.warn(f"Ignoring unknown action sent {action}")
         except Exception as err:
             logger.error("Error with message: ", exc_info=True)
 
@@ -237,6 +241,14 @@ def escape(text):
     return re.sub(r'(\*|_|`|~|\\|>)', r'\\\g<1>', text)
 
 
+def get_online_members(channel):
+    online_members = []
+    for member in channel.members:
+        if member.status.online:
+            online_members.append(member)
+    return online_members
+
+
 @bot.command(name='next', help='Continues AI Dungeon game')
 @is_in_channel()
 async def game_next(ctx, *, text='continue'):
@@ -258,7 +270,7 @@ async def game_next(ctx, *, text='continue'):
             action = first_to_second_person(user_action_regex.group(1))
             action = "You" + action
             action = end_sentence(action)
-    message = {'channel': ctx.channel.id, 'action': action}
+    message = {'channel': ctx.channel.id, 'user_id': ctx.message.author.id, 'action': '__NEXT__', 'story_action': action}
     await queue.put(json.dumps(message))
 
 
