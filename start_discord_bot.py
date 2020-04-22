@@ -90,10 +90,14 @@ async def on_ready():
                     exit()
                 elif action == "__PLAY_SFX__":
                     await bot_play_sfx(voice_client, args['sfx_key'])
-                elif action == "__NEW_GAME__":
-                    context = args['context']
-                    story = Story(generator, escape(context), censor=censor)
-                    await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
+                elif action == "__NEW_GAME__" or (story and story.context == '' and action == '__NEXT__'):
+                    context = args['context'] if action != '__NEXT__' else args['story_action']
+                    if context == '##CONTEXT_NOT_SET##':
+                        story = Story(generator, censor=censor)
+                        await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
+                    else:
+                        story = Story(generator, escape(context), censor=censor)
+                        await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 elif action == "__LOAD_GAME__":
                     save_game_id = args['save_game_id']
                     with open(f"saves/{save_game_id}.json", 'r', encoding="utf-8") as file:
@@ -151,7 +155,7 @@ async def on_ready():
                     story.censor = censor
                     await ai_channel.send(f"Censor is {'on' if censor else 'off'}")
                 elif action == "__NEXT__":
-                    user = args['user_id']
+                    # user = args['user_id'] # TODO hash user id so not sending unencrypted PII
                     story_action = args['story_action']
                     task = loop.run_in_executor(None, story.act, story_action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
@@ -208,7 +212,7 @@ def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
     voice = texttospeech.types.VoiceSelectionParams(
         language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU', 'de-DE'
-        name='en-US-Wavenet-F', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
+        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
         ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
     audio_config = texttospeech.types.AudioConfig(
         audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
@@ -270,7 +274,7 @@ async def game_next(ctx, *, text='continue'):
             action = first_to_second_person(user_action_regex.group(1))
             action = "You" + action
             action = end_sentence(action)
-    message = {'channel': ctx.channel.id, 'user_id': ctx.message.author.id, 'action': '__NEXT__', 'story_action': action}
+    message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action} # 'user_id': ctx.message.author.id
     await queue.put(json.dumps(message))
 
 
@@ -306,7 +310,7 @@ async def game_revert(ctx):
 @bot.command(name='newgame', help='Starts a new game with new context')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def game_newgame(ctx, *, text='continue'):
+async def game_newgame(ctx, *, text='##CONTEXT_NOT_SET##'):
     await game_save(ctx)
     message = {'channel': ctx.channel.id, 'action': '__NEW_GAME__', 'context': text}
     await queue.put(json.dumps(message))
