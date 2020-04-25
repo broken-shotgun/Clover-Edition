@@ -212,7 +212,7 @@ def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
     voice = texttospeech.types.VoiceSelectionParams(
         language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU', 'de-DE'
-        name='en-US-Wavenet-C', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
+        name='en-US-Wavenet-F', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
         ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
     audio_config = texttospeech.types.AudioConfig(
         audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
@@ -307,7 +307,7 @@ async def game_revert(ctx):
     await queue.put(json.dumps(message))
 
 
-@bot.command(name='newgame', help='Starts a new game with new context')
+@bot.command(name='newgame', help='Starts a new game')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def game_newgame(ctx, *, text='##CONTEXT_NOT_SET##'):
@@ -383,12 +383,12 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
     if (key in stats):
         stats[key] += amount
         with open("tmp/stats.txt", 'w') as out:
-            out.write(f"Kills: {stats['kills']}\n")
-            out.write(f"Deaths: {stats['deaths']}\n")
-            out.write(f"Whoopies: {stats['whoopies']}\n")
-            out.write(f"Fallbacks: {stats['fallbacks']}\n")
-            out.write(f"MIBs: {stats['mibs']}\n")
-            out.write(f"Wholesomes: {stats['wholesomes']}")
+            out.write(f"Kills: {stats['kills']} 🔪\n")
+            out.write(f"Deaths: {stats['deaths']} 💀\n")
+            out.write(f"Whoopies: {stats['whoopies']} 🍆\n")
+            out.write(f"Fallbacks: {stats['fallbacks']} 🤕\n")
+            out.write(f"MIBs: {stats['mibs']} 😎\n")
+            out.write(f"Wholesomes: {stats['wholesomes']} 🌞")
         # only play sfx if adding a stat
         if amount > 0:
             message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': key}
