@@ -2,10 +2,11 @@
 import asyncio, json, logging, os, random, re, sys, time, typing, uuid
 from logging.handlers import SysLogHandler
 
+from getconfig import settings
+from gpt2generator import GPT2Generator
 from play import get_generator, save_story
 from storymanager import Story
 from utils import *
-from gpt2generator import GPT2Generator
 
 import discord
 from discord.ext import commands
@@ -13,8 +14,8 @@ from google.cloud import texttospeech
 
 # bot setup
 bot = commands.Bot(command_prefix='!')
-CHANNEL = os.getenv('DISCORD_BOT_CHANNEL', 'general')
-ADMIN_ROLE = os.getenv('DISCORD_BOT_ADMIN_ROLE', 'admin')
+ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
+CHANNEL = settings.get('discord-bot-channel', 'general')
 DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 EXAMPLE_CONTEXT = "Your name is Shrek. You are a large green ogre with many internal layers like an onion."
 EXAMPLE_PROMPT = "You live in a small home in a swamp. The swamp is yours but more and more people have begun to trespass. You must kick these people out and defend your swamp."
@@ -383,12 +384,12 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
     if (key in stats):
         stats[key] += amount
         with open("tmp/stats.txt", 'w') as out:
-            out.write(f"Kills: {stats['kills']} 🔪\n")
-            out.write(f"Deaths: {stats['deaths']} 💀\n")
-            out.write(f"Whoopies: {stats['whoopies']} 🍆\n")
-            out.write(f"Fallbacks: {stats['fallbacks']} 🤕\n")
-            out.write(f"MIBs: {stats['mibs']} 😎\n")
-            out.write(f"Wholesomes: {stats['wholesomes']} 🌞")
+            out.write(f"Kills: {stats['kills']}\n")
+            out.write(f"Deaths: {stats['deaths']}\n")
+            out.write(f"Whoopies: {stats['whoopies']}\n")
+            out.write(f"Fallbacks: {stats['fallbacks']}\n")
+            out.write(f"MIBs: {stats['mibs']}\n")
+            out.write(f"Wholesomes: {stats['wholesomes']}")
         # only play sfx if adding a stat
         if amount > 0:
             message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': key}
