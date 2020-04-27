@@ -122,17 +122,17 @@ Next setup the following environment variables, only `DISCORD_BOT_TOKEN` is requ
 
 ```bash
 DISCORD_BOT_TOKEN="<insert_your_discord_bot_token_here>"
-DISCORD_BOT_CHANNEL="<active_channel_bot_should_listen_for_commands>"
-DISCORD_BOT_ADMIN_ROLE="<admin_role_for_admin_commands>"
 DISCORD_BOT_LOG_URL="<insert_your_papertrail_or_other_log_url_here>"
 ```
 
-To start the Dicord Bot, just enter the folder and run `start_discord_bot.py` with python3. From the command line:
+And then update the `config.ini` accordingly to your Discord setup:
 
-```bash
-cd Clover-Edition
-python3 start_discord_bot.py
+```ini
+discord-bot-admin-role = admin
+discord-bot-channel = general
 ```
+
+To start the Dicord Bot, just enter the folder and run `start_discord_bot.py` with python3.
 
 ##### Text to Speech (even more optional)
 
@@ -140,7 +140,7 @@ The Discord Bot is setup to use Google WaveNet text-to-speech voices to read bac
 
 To setup WaveNet voices for Text to Speech, we'll need to setup Google Cloud Platform.
 
-Follow the [Quickstart guide](https://cloud.google.com/text-to-speech/docs/quickstart-client-libraries#client-libraries-install-python) and make sure to et `GOOGLE_APPLICATION_CREDENTIALS` to location of JSON file with credentials on your machine.
+Follow the [Quickstart guide](https://cloud.google.com/text-to-speech/docs/quickstart-client-libraries#client-libraries-install-python) and make sure to set the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to location of JSON file with credentials on your machine.
 
 #### Play
 
