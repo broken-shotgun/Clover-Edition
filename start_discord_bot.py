@@ -166,6 +166,7 @@ async def on_ready():
                 elif action == "__NEXT__":
                     # user = args['user_id'] # TODO hash user id so not sending unencrypted PII
                     story_action = args['story_action']
+                    episode_log(f"\n\n>> {escape(story_action)}")
                     task = loop.run_in_executor(None, story.act, story_action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
                     sent = f"{escape(story_action)}\n{escape(response)}"
@@ -175,7 +176,7 @@ async def on_ready():
                     # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                     # but it always appends "Bot says..." which gets annoying real fast and 
                     # the voice isn't configurable
-                    episode_log(f"\n\n>> {escape(story_action)}\n\n{escape(response)}")
+                    episode_log(f"\n\n{escape(response)}")
                     await ai_channel.send(f"> {sent}")
                 else:
                     logger.warn(f"Ignoring unknown action sent {action}")
