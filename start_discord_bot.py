@@ -17,7 +17,7 @@ bot = commands.Bot(command_prefix='!')
 ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
 CHANNEL = settings.get('discord-bot-channel', 'general')
 DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-EXAMPLE_CONTEXT = "Your name is Shrek. You are a large green ogre with many internal layers like an onion."
+EXAMPLE_CONTEXT = "You are a large green ogre named Shrek with many internal layers like an onion."
 EXAMPLE_PROMPT = "You live in a small home in a swamp. The swamp is yours but more and more people have begun to trespass. You must kick these people out and defend your swamp."
 
 if DISCORD_TOKEN is None:
@@ -59,6 +59,11 @@ async def on_ready():
     loop = asyncio.get_event_loop()
     story = None
     censor = True
+    try:
+        with open("tmp/episode.log", 'w') as out:
+            out.write("Now entering the AI Police Department...")
+    except Exception as err:
+        logger.error("Error attemping to write to episode log: ", exc_info=True)
     while True:
         # poll queue for messages, block here if empty
         msg = None
@@ -97,6 +102,7 @@ async def on_ready():
                         story = Story(generator, censor=censor)
                         await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
                     else:
+                        episode_log(f"\n\n>> {escape(context)}")
                         story = Story(generator, escape(context), censor=censor)
                         await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 elif action == "__LOAD_GAME__":
@@ -117,6 +123,7 @@ async def on_ready():
                                 game_load_message = game_load_message + f"\n{last_result}"
                             if voice_client and voice_client.is_connected():
                                 await bot_read_message(loop, voice_client, game_load_message)
+                            episode_log(f"\n\n>> {game_load_message}")
                             await ai_channel.send(f"> {game_load_message}")
                         except FileNotFoundError:
                             await ai_channel.send("Save file not found.")
@@ -134,23 +141,24 @@ async def on_ready():
                 elif action == "__REMEMBER__":
                     memory = args['memory']
                     story.memory.append(memory[0].upper() + memory[1:] + ".")
-                    await ai_channel.send(f"You remember {memory}.")
+                    episode_log(f"\n\nYou remember {memory}.")
+                    await ai_channel.send(f">> You remember {memory}.")
                 elif action == "__FORGET__":
                     if len(story.memory) == 0:
                         await ai_channel.send("There is nothing to forget.")
                     else:
                         last_memory = story.memory[-1]
                         story.memory = story.memory[:-1]
+                        episode_log(f"\n\n>> You forget {last_memory}.")
                         await ai_channel.send(f"You forget {last_memory}.")
                 elif action == "__REVERT__":
                     if len(story.actions) == 0:
                         await ai_channel.send("You can't go back any farther.")
                     else:
                         story.revert()
-                        if len(story.results) > 0:
-                            await ai_channel.send(f"Last action reverted.\n{story.results[-1]}")
-                        else:
-                            await ai_channel.send(f"Last action reverted.\n{story.context}")
+                        new_last_action = story.results[-1] if len(story.results) > 0 else story.context
+                        episode_log(f"\n\n>> Reverted to: {new_last_action}")
+                        await ai_channel.send(f"Last action reverted.\n{new_last_action}")
                 elif action == "__TOGGLE_CENSOR__":
                     censor = args['censor']
                     story.censor = censor
@@ -167,6 +175,7 @@ async def on_ready():
                     # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                     # but it always appends "Bot says..." which gets annoying real fast and 
                     # the voice isn't configurable
+                    episode_log(f"\n\n>> {escape(story_action)}\n\n{escape(response)}")
                     await ai_channel.send(f"> {sent}")
                 else:
                     logger.warn(f"Ignoring unknown action sent {action}")
@@ -207,6 +216,14 @@ async def bot_play_sfx(voice_client, sfx_key):
         await bot_play_audio(voice_client, "sfx/men_in_black.ogg")
     elif sfx_key == "whoami":
         await bot_play_audio(voice_client, "sfx/hello.ogg")
+
+
+def episode_log(message):
+    try:
+        with open("tmp/episode.log", 'a') as out:
+            out.write(f"{message}")
+    except Exception as err:
+        logger.error("Error attemping to write to episode log: ", exc_info=True)
 
 
 def create_tts_ogg(filename, message):
