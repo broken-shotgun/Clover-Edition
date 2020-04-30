@@ -100,6 +100,7 @@ async def on_ready():
                     context = args['context'] if action != '__NEXT__' else args['story_action']
                     if context == '##CONTEXT_NOT_SET##':
                         story = Story(generator, censor=censor)
+                        episode_log("\n\n\n\n\n\n\n\n\n\n\n\n")
                         await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
                     else:
                         episode_log(f"\n\n>> {escape(context)}")
@@ -164,9 +165,9 @@ async def on_ready():
                     story.censor = censor
                     await ai_channel.send(f"Censor is {'on' if censor else 'off'}")
                 elif action == "__NEXT__":
-                    # user = args['user_id'] # TODO hash user id so not sending unencrypted PII
+                    author = args['author_name']
                     story_action = args['story_action']
-                    episode_log(f"\n\n>> {escape(story_action)}")
+                    episode_log(f"\n\n[{author}] >> {escape(story_action)}")
                     task = loop.run_in_executor(None, story.act, story_action)
                     response = await asyncio.wait_for(task, 120, loop=loop)
                     sent = f"{escape(story_action)}\n{escape(response)}"
@@ -293,7 +294,7 @@ async def game_next(ctx, *, text='continue'):
             action = first_to_second_person(user_action_regex.group(1))
             action = "You" + action
             action = end_sentence(action)
-    message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action} # 'user_id': ctx.message.author.id
+    message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
     await queue.put(json.dumps(message))
 
 
