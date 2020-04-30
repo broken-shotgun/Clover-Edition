@@ -60,7 +60,7 @@ async def on_ready():
     story = None
     censor = True
     try:
-        with open("tmp/episode.log", 'w') as out:
+        with open("tmp/episode.log", 'w', encoding="utf-8") as out:
             out.write("Now entering the AI Police Department...")
     except Exception as err:
         logger.error("Error attemping to write to episode log: ", exc_info=True)
@@ -100,7 +100,7 @@ async def on_ready():
                     context = args['context'] if action != '__NEXT__' else args['story_action']
                     if context == '##CONTEXT_NOT_SET##':
                         story = Story(generator, censor=censor)
-                        episode_log("\n\n\n\n\n\n\n\n\n\n\n\n")
+                        episode_log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
                         await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
                     else:
                         episode_log(f"\n\n>> {escape(context)}")
@@ -222,7 +222,7 @@ async def bot_play_sfx(voice_client, sfx_key):
 
 def episode_log(message):
     try:
-        with open("tmp/episode.log", 'a') as out:
+        with open("tmp/episode.log", 'a', encoding="utf-8") as out:
             out.write(f"{message}")
     except Exception as err:
         logger.error("Error attemping to write to episode log: ", exc_info=True)
@@ -402,7 +402,7 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
         key = f"{key}s"
     if (key in stats):
         stats[key] += amount
-        with open("tmp/stats.txt", 'w') as out:
+        with open("tmp/stats.txt", "w", encoding="utf-8") as out:
             out.write(f"Kills: {stats['kills']}\n")
             out.write(f"Deaths: {stats['deaths']}\n")
             out.write(f"Whoopies: {stats['whoopies']}\n")
@@ -421,7 +421,7 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def track_whoami(ctx, *, character):
-    with open("tmp/whoami.txt", 'w') as out:
+    with open("tmp/whoami.txt", "w", encoding="utf-8") as out:
         out.write(f" Currently playing as: {character}")
     message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': 'whoami'}
     await queue.put(json.dumps(message))
