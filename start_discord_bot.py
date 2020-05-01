@@ -96,7 +96,7 @@ async def on_ready():
                     context = args['context'] if action != '__NEXT__' else args['story_action']
                     if context == '##CONTEXT_NOT_SET##':
                         story = Story(generator, censor=censor)
-                        await episode_log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+                        await episode_log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStarting a new adventure...")
                         await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
                     else:
                         await episode_log(f"\n\n>> {escape(context)}")
@@ -127,7 +127,7 @@ async def on_ready():
                         except IOError:
                             await ai_channel.send("Something went wrong; aborting.")
                 elif not story:
-                    await ai_channel.send(f"No story loaded.\nStart one with !newgame (Ex. {EXAMPLE_CONTEXT}) or !load save_game_id")
+                    logger.warn(f"No story set, ignoring {action} action")
                 elif action == "__SAVE_GAME__":
                     if not story.savefile or len(story.savefile.strip()) == 0:
                         savefile = args['savefile']
