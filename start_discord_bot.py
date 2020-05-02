@@ -59,7 +59,7 @@ async def on_ready():
     loop = asyncio.get_event_loop()
     censor = True
     story = Story(generator, censor=censor)
-    await episode_log("Now entering the AI Police Department...", mode="w")
+    await episode_log(loop, "Now entering the AI Police Department...", mode="w")
     while True:
         # poll queue for messages, block here if empty
         msg = None
@@ -96,10 +96,10 @@ async def on_ready():
                     context = args['context'] if action != '__NEXT__' else args['story_action']
                     if context == '##CONTEXT_NOT_SET##':
                         story = Story(generator, censor=censor)
-                        await episode_log("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStarting a new adventure...")
+                        await episode_log(loop, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStarting a new adventure...")
                         await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
                     else:
-                        await episode_log(f"\n\n>> {escape(context)}")
+                        await episode_log(loop, f"\n\n>> {escape(context)}")
                         story = Story(generator, escape(context), censor=censor)
                         await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 elif action == "__LOAD_GAME__":
@@ -120,7 +120,7 @@ async def on_ready():
                                 game_load_message = game_load_message + f"\n{last_result}"
                             if voice_client and voice_client.is_connected():
                                 await bot_read_message(loop, voice_client, game_load_message)
-                            await episode_log(f"\n\n>> {game_load_message}")
+                            await episode_log(loop, f"\n\n>> {game_load_message}")
                             await ai_channel.send(f"> {game_load_message}")
                         except FileNotFoundError:
                             await ai_channel.send("Save file not found.")
@@ -138,7 +138,7 @@ async def on_ready():
                 elif action == "__REMEMBER__":
                     memory = args['memory']
                     story.memory.append(memory[0].upper() + memory[1:] + ".")
-                    await episode_log(f"\n\nYou remember {memory}.")
+                    await episode_log(loop, f"\n\nYou remember {memory}.")
                     await ai_channel.send(f">> You remember {memory}.")
                 elif action == "__FORGET__":
                     if len(story.memory) == 0:
@@ -146,7 +146,7 @@ async def on_ready():
                     else:
                         last_memory = story.memory[-1]
                         story.memory = story.memory[:-1]
-                        await episode_log(f"\n\n>> You forget {last_memory}.")
+                        await episode_log(loop, f"\n\n>> You forget {last_memory}.")
                         await ai_channel.send(f"You forget {last_memory}.")
                 elif action == "__REVERT__":
                     if len(story.actions) == 0:
@@ -154,7 +154,7 @@ async def on_ready():
                     else:
                         story.revert()
                         new_last_action = story.results[-1] if len(story.results) > 0 else story.context
-                        await episode_log(f"\n\n>> Reverted to: {new_last_action}")
+                        await episode_log(loop, f"\n\n>> Reverted to: {new_last_action}")
                         await ai_channel.send(f"Last action reverted.\n{new_last_action}")
                 elif action == "__TOGGLE_CENSOR__":
                     censor = args['censor']
@@ -163,9 +163,9 @@ async def on_ready():
                 elif action == "__NEXT__":
                     author = args['author_name']
                     story_action = args['story_action']
-                    await episode_log(f"\n\n[{author}] >> {escape(story_action)}")
+                    await episode_log(loop, f"\n\n[{author}] >> {escape(story_action)}")
                     task = loop.run_in_executor(None, story.act, story_action)
-                    response = await asyncio.wait_for(task, 120, loop=loop)
+                    response = await asyncio.wait_for(task, timeout=120, loop=loop)
                     sent = f"{escape(story_action)}\n{escape(response)}"
                     # handle tts if in a voice channel
                     if voice_client and voice_client.is_connected():
@@ -173,7 +173,7 @@ async def on_ready():
                     # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                     # but it always appends "Bot says..." which gets annoying real fast and 
                     # the voice isn't configurable
-                    await episode_log(f"\n\n{escape(response)}")
+                    await episode_log(loop, f"\n\n{escape(response)}")
                     await ai_channel.send(f"> {sent}")
                 else:
                     logger.warning(f"Ignoring unknown action sent {action}")
@@ -183,9 +183,9 @@ async def on_ready():
 
 async def bot_read_message(loop, voice_client, message):
     try:
-        filename = 'tmp/message.ogg'
+        filename = "tmp/message.ogg"
         tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
-        await asyncio.wait_for(tts_task, 90, loop=loop)
+        await asyncio.wait_for(tts_task, timeout=90, loop=loop)
         await bot_play_audio(voice_client, filename)
     except Exception as err:
         logger.error(f"Error attempting to generate/play TTS for '{message}': ", exc_info=True)
@@ -216,12 +216,18 @@ async def bot_play_sfx(voice_client, sfx_key):
         await bot_play_audio(voice_client, "sfx/hello.ogg")
 
 
-async def episode_log(message, mode="a"):
+async def episode_log(loop, message, mode="a"):
     try:
-        with open("tmp/episode.log", mode=mode, encoding="utf-8") as out:
-            out.write(f"{message}")
+        filename = "tmp/episode.log"
+        write_task = loop.run_in_executor(None, write_to_file, filename, mode, message)
+        await asyncio.wait_for(write_task, timeout=5, loop=loop)
     except Exception as err:
         logger.error("Error attemping to write to episode log: ", exc_info=True)
+
+
+def write_to_file(filename, mode, message):
+    with open(filename, mode=mode, encoding="utf-8") as out:
+        out.write(message)
 
 
 def create_tts_ogg(filename, message):
