@@ -57,8 +57,8 @@ logger.info('Worker instance started')
 async def on_ready():
     logger.info('Bot is ready')
     loop = asyncio.get_event_loop()
-    story = None
     censor = True
+    story = Story(generator, censor=censor)
     await episode_log("Now entering the AI Police Department...", mode="w")
     while True:
         # poll queue for messages, block here if empty
@@ -127,8 +127,8 @@ async def on_ready():
                         except IOError:
                             await ai_channel.send("Something went wrong; aborting.")
                 elif not story:
-                    logger.warn(f"No story set, ignoring {action} action")
-                elif action == "__SAVE_GAME__":
+                    logger.warning(f"No story set, ignoring {action} action")
+                elif action == "__SAVE_GAME__" and story.context is not '':
                     if not story.savefile or len(story.savefile.strip()) == 0:
                         savefile = args['savefile']
                     else:
@@ -176,7 +176,7 @@ async def on_ready():
                     await episode_log(f"\n\n{escape(response)}")
                     await ai_channel.send(f"> {sent}")
                 else:
-                    logger.warn(f"Ignoring unknown action sent {action}")
+                    logger.warning(f"Ignoring unknown action sent {action}")
         except Exception as err:
             logger.error("Error with message: ", exc_info=True)
 
@@ -218,7 +218,7 @@ async def bot_play_sfx(voice_client, sfx_key):
 
 async def episode_log(message, mode="a"):
     try:
-        with open("tmp/episode.log", mode, encoding="utf-8") as out:
+        with open("tmp/episode.log", mode=mode, encoding="utf-8") as out:
             out.write(f"{message}")
     except Exception as err:
         logger.error("Error attemping to write to episode log: ", exc_info=True)
