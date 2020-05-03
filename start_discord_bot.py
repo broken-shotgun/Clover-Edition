@@ -105,7 +105,7 @@ async def on_ready():
                     save_game_id = args['save_game_id']
                     with open(f"saves/{save_game_id}.json", "r", encoding="utf-8") as file:
                         try:
-                            story = Story(generator)
+                            story = Story(generator, censor=censor)
                             savefile = os.path.splitext(file.name.strip())[0]
                             savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
                             story.savefile = savefile
