@@ -18,8 +18,8 @@ bot = commands.Bot(command_prefix='!')
 ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
 CHANNEL = settings.get('discord-bot-channel', 'general')
 DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-EXAMPLE_CONTEXT = "You are a large green ogre named Shrek with many internal layers like an onion."
-EXAMPLE_PROMPT = "You live in a small home in a swamp. The swamp is yours but more and more people have begun to trespass. You must kick these people out and defend your swamp."
+EXAMPLE_CONTEXT = "You are fat bastard Christmas man. You are the old Santa Claus. You are love by children, feared by adults, you are a myth and a legend."
+EXAMPLE_PROMPT = "You are flying through the air during Christmas Night in your magical sleight dragged around by reindeer. You are going to be delivering presents to all the good kids this Christmas Night and coal to the bad and naughty kids."
 
 if DISCORD_TOKEN is None:
     logger.error('Error: DISCORD_BOT_TOKEN is not set')
@@ -103,7 +103,7 @@ async def on_ready():
                         await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 elif action == "__LOAD_GAME__":
                     save_game_id = args['save_game_id']
-                    with open(f"saves/{save_game_id}.json", 'r', encoding="utf-8") as file:
+                    with open(f"saves/{save_game_id}.json", "r", encoding="utf-8") as file:
                         try:
                             story = Story(generator)
                             savefile = os.path.splitext(file.name.strip())[0]
@@ -228,11 +228,6 @@ async def bot_play_sfx(voice_client, sfx_key):
         await bot_play_audio(voice_client, "sfx/hello.ogg")
 
 
-def write_to_file(filename, mode, message):
-    with open(filename, mode=mode, encoding="utf-8") as out:
-        out.write(message)
-
-
 def create_tts_ogg(filename, message):
     synthesis_input = texttospeech.types.SynthesisInput(text=message)
     voice = texttospeech.types.VoiceSelectionParams(
@@ -242,7 +237,7 @@ def create_tts_ogg(filename, message):
     audio_config = texttospeech.types.AudioConfig(
         audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
     response = client.synthesize_speech(synthesis_input, voice, audio_config)
-    with open(filename, 'wb') as out:
+    with open(filename, "wb") as out:
         out.write(response.audio_content)
         logger.info(f'Audio content written to file "{filename}"')
 
