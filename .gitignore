@@ -14,4 +14,6 @@ story*.json
 .python-version
 tmp/*
 !/tmp/.gitkeep
+crashes/*
+!/crashes/.gitkeep
 credentials/
