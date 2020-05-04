@@ -242,7 +242,11 @@ def create_tts_ogg(filename, message):
 
 
 def get_active_voice_client(ctx):
-    guild =  ctx.guild if type(ctx) == discord.TextChannel else ctx.message.guild
+    guild = (ctx.guild if type(ctx) == discord.TextChannel 
+        else ctx.message.guild if type(ctx) == discord.ext.commands.Context 
+        else None)
+    if not guild:
+        return None
     voice_client = guild.voice_client
     if voice_client:
         if voice_client.is_connected():
