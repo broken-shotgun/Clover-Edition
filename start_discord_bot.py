@@ -78,89 +78,7 @@ async def on_ready():
         ai_channel = bot.get_channel(channel)
         try:
             async with ai_channel.typing():
-                if action == "__EXIT__": 
-                    voice_client = get_active_voice_client(ai_channel)
-                    if voice_client:
-                        if voice_client.is_connected():
-                            await voice_client.disconnect()
-                        else:
-                            for client in ai_channel.guild.voice_clients:
-                                if client.is_connected():
-                                    await client.disconnect()
-                    await ai_channel.send("Exiting game...")
-                    exit()
-                elif action == "__PLAY_SFX__":
-                    await bot_play_sfx(get_active_voice_client(ai_channel), args['sfx_key'])
-                elif action == "__NEW_GAME__":
-                    context = args['context']
-                    if context == '##CONTEXT_NOT_SET##':
-                        story = Story(generator, censor=censor)
-                        eplogger.info("\n\n\n\n\n\nStarting a new adventure...")
-                        await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
-                    else:
-                        eplogger.info(f"\n>> {escape(context)}")
-                        story = Story(generator, escape(context), censor=censor)
-                        await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
-                elif action == "__LOAD_GAME__":
-                    save_game_id = args['save_game_id']
-                    with open(f"saves/{save_game_id}.json", "r", encoding="utf-8") as file:
-                        try:
-                            story = Story(generator, censor=censor)
-                            savefile = os.path.splitext(file.name.strip())[0]
-                            savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
-                            story.savefile = savefile
-                            story.from_json(file.read())
-                            last_prompt = story.actions[-1] if len(story.actions) > 0 else ""
-                            last_result = story.results[-1] if len(story.results) > 0 else ""
-                            game_load_message = f"Previously on AI Dungeon...\n{story.context}"
-                            if last_prompt and len(last_prompt) > 0:
-                                game_load_message = game_load_message + f"\n{last_prompt}"
-                            if last_result and len(last_result) > 0:
-                                game_load_message = game_load_message + f"\n{last_result}"
-                            voice_client = get_active_voice_client(ai_channel)
-                            if voice_client and voice_client.is_connected():
-                                await bot_read_message(loop, voice_client, game_load_message)
-                            eplogger.info(f"\n>> {game_load_message}")
-                            await ai_channel.send(f"> {game_load_message}")
-                        except FileNotFoundError:
-                            await ai_channel.send("Save file not found.")
-                        except IOError:
-                            await ai_channel.send("Something went wrong; aborting.")
-                elif not story:
-                    logger.warning(f"No story set, ignoring {action} action")
-                elif action == "__SAVE_GAME__" and story.context is not '':
-                    if not story.savefile or len(story.savefile.strip()) == 0:
-                        savefile = args['savefile']
-                    else:
-                        savefile = story.savefile
-                    save_story(story, savefile)
-                    await ai_channel.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
-                elif action == "__REMEMBER__":
-                    memory = args['memory']
-                    story.memory.append(memory[0].upper() + memory[1:] + ".")
-                    eplogger.info(f"\nYou remember {memory}.")
-                    await ai_channel.send(f">> You remember {memory}.")
-                elif action == "__FORGET__":
-                    if len(story.memory) == 0:
-                        await ai_channel.send("There is nothing to forget.")
-                    else:
-                        last_memory = story.memory[-1]
-                        story.memory = story.memory[:-1]
-                        eplogger.info(f"\n\n>> You forget {last_memory}.")
-                        await ai_channel.send(f"You forget {last_memory}.")
-                elif action == "__REVERT__":
-                    if len(story.actions) == 0:
-                        await ai_channel.send("You can't go back any farther.")
-                    else:
-                        story.revert()
-                        new_last_action = story.results[-1] if len(story.results) > 0 else story.context
-                        eplogger.info(f"\n\n>> Reverted to: {new_last_action}")
-                        await ai_channel.send(f"Last action reverted.\n{new_last_action}")
-                elif action == "__TOGGLE_CENSOR__":
-                    censor = args['censor']
-                    story.censor = censor
-                    await ai_channel.send(f"Censor is {'on' if censor else 'off'}")
-                elif action == "__NEXT__":
+                if action == "__NEXT__":
                     author = args['author_name']
                     story_action = args['story_action']
                     if story.context == '':
@@ -181,16 +99,97 @@ async def on_ready():
                         # the voice isn't configurable
                         eplogger.info(f"\n{escape(response)}")
                         await ai_channel.send(f"> {sent}")
+                elif action == "__PLAY_SFX__":
+                    await bot_play_sfx(get_active_voice_client(ai_channel), args['sfx_key'])
+                elif action == "__REVERT__":
+                    if len(story.actions) == 0:
+                        await ai_channel.send("You can't go back any farther.")
+                    else:
+                        story.revert()
+                        new_last_action = story.results[-1] if len(story.results) > 0 else story.context
+                        eplogger.info(f"\n\n>> Reverted to: {new_last_action}")
+                        await ai_channel.send(f"Last action reverted.\n{new_last_action}")
+                elif action == "__NEW_GAME__":
+                    context = args['context']
+                    if context == '##CONTEXT_NOT_SET##':
+                        story = Story(generator, censor=censor)
+                        eplogger.info("\n\n\n\n\n\nStarting a new adventure...")
+                        await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
+                    else:
+                        eplogger.info(f"\n>> {escape(context)}")
+                        story = Story(generator, escape(context), censor=censor)
+                        await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
+                elif action == "__LOAD_GAME__":
+                    save_game_id = args['save_game_id']
+                    try:
+                        story = Story(generator, censor=censor)
+                        with open(f"saves/{save_game_id}.json", "r", encoding="utf-8") as file:
+                            savefile = os.path.splitext(file.name.strip())[0]
+                            savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
+                            story.savefile = savefile
+                            story.from_json(file.read())
+                        last_prompt = story.actions[-1] if len(story.actions) > 0 else ""
+                        last_result = story.results[-1] if len(story.results) > 0 else ""
+                        game_load_message = f"Previously on AI Dungeon...\n{story.context}"
+                        if last_prompt and len(last_prompt) > 0:
+                            game_load_message = game_load_message + f"\n{last_prompt}"
+                        if last_result and len(last_result) > 0:
+                            game_load_message = game_load_message + f"\n{last_result}"
+                        voice_client = get_active_voice_client(ai_channel)
+                        if voice_client and voice_client.is_connected():
+                            await bot_read_message(loop, voice_client, game_load_message)
+                        eplogger.info(f"\n>> {game_load_message}")
+                        await ai_channel.send(f"> {game_load_message}")
+                    except FileNotFoundError:
+                        await ai_channel.send("Save file not found.")
+                    except IOError:
+                        await ai_channel.send("Something went wrong; aborting.")
+                elif action == "__SAVE_GAME__" and story.context is not '':
+                    if not story.savefile or len(story.savefile.strip()) == 0:
+                        savefile = args['savefile']
+                    else:
+                        savefile = story.savefile
+                    save_story(story, savefile)
+                    await ai_channel.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
+                elif action == "__REMEMBER__":
+                    memory = args['memory']
+                    story.memory.append(memory[0].upper() + memory[1:] + ".")
+                    eplogger.info(f"\nYou remember {memory}.")
+                    await ai_channel.send(f">> You remember {memory}.")
+                elif action == "__FORGET__":
+                    if len(story.memory) == 0:
+                        await ai_channel.send("There is nothing to forget.")
+                    else:
+                        last_memory = story.memory[-1]
+                        story.memory = story.memory[:-1]
+                        eplogger.info(f"\n\n>> You forget {last_memory}.")
+                        await ai_channel.send(f"You forget {last_memory}.")
+                elif action == "__TOGGLE_CENSOR__":
+                    censor = args['censor']
+                    story.censor = censor
+                    await ai_channel.send(f"Censor is {'on' if censor else 'off'}")
+                elif action == "__EXIT__": 
+                    voice_client = get_active_voice_client(ai_channel)
+                    if voice_client:
+                        if voice_client.is_connected():
+                            await voice_client.disconnect()
+                        else:
+                            for client in ai_channel.guild.voice_clients:
+                                if client.is_connected():
+                                    await client.disconnect()
+                    await ai_channel.send("Exiting game...")
+                    exit(0)
                 else:
                     logger.warning(f"Ignoring unknown action sent {action}")
         except Exception as err:
             logger.error("Error with message: ", exc_info=True)
             if story:
-                 if not story.savefile or len(story.savefile.strip()) == 0:
-                    savefile = datetime.now().strftime("crashes/%d-%m-%Y_%H%M%S")
-                 else:
-                    savefile = story.savefile
-                 save_story(story, file_override=savefile)
+                if not story.savefile or len(story.savefile.strip()) == 0:
+                   savefile = datetime.now().strftime("crashes/%d-%m-%Y_%H%M%S")
+                else:
+                   savefile = story.savefile
+                save_story(story, file_override=savefile)
+                exit(-1)
 
 
 async def bot_read_message(loop, voice_client, message):
@@ -347,9 +346,12 @@ async def game_save(ctx, text=str(uuid.uuid1())):
 @bot.command(name='load', help='Load the game with given ID')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def game_load(ctx, *, text='save_game_id'):
-    message = {'channel': ctx.channel.id, 'action': '__LOAD_GAME__', 'save_game_id': text}
-    await queue.put(json.dumps(message))
+async def game_load(ctx, *, text='##SAVE_GAME_ID##'):
+    if text == '##SAVE_GAME_ID##':
+        await ctx.send("Please enter save file id.")
+    else:
+        message = {'channel': ctx.channel.id, 'action': '__LOAD_GAME__', 'save_game_id': text}
+        await queue.put(json.dumps(message))
 
 
 @bot.command(name='exit', help='Saves and exits the current game')
