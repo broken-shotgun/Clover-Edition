@@ -52,12 +52,12 @@ stats = {
 }
 
 # episode log setup
-episode_log_path = "tmp/episode.log"
-eplogger = logging.getLogger('episode')
-eplogger.setLevel(logging.INFO)
-epfilelog = logging.FileHandler(episode_log_path, mode="w", encoding="utf-8")
-epfilelog.setFormatter(logging.Formatter('%(message)s'))
-eplogger.addHandler(epfilelog)
+# episode_log_path = "tmp/episode.log"
+# eplogger = logging.getLogger('episode')
+# eplogger.setLevel(logging.INFO)
+# epfilelog = logging.FileHandler(episode_log_path, mode="w", encoding="utf-8")
+# epfilelog.setFormatter(logging.Formatter('%(message)s'))
+# eplogger.addHandler(epfilelog)
 
 logger.info('Worker instance started')
 
@@ -68,7 +68,7 @@ async def on_ready():
     loop = asyncio.get_event_loop()
     censor = True
     story = Story(generator, censor=censor)
-    eplogger.info("Now entering the AI Police Department...")
+    # eplogger.info("Now entering the AI Police Department...")
     while True:
         # poll queue for messages, block here if empty
         msg = None
@@ -83,10 +83,10 @@ async def on_ready():
                     story_action = args['story_action']
                     if story.context == '':
                         story.context = escape(story_action)
-                        eplogger.info(story.context)
+                        # eplogger.info(story.context)
                         await ai_channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                     else:
-                        eplogger.info(f"\n[{author}] >> {escape(story_action)}")
+                        # eplogger.info(f"\n[{author}] >> {escape(story_action)}")
                         task = loop.run_in_executor(None, story.act, story_action)
                         response = await asyncio.wait_for(task, timeout=120, loop=loop)
                         sent = f"{escape(story_action)}\n{escape(response)}"
@@ -97,7 +97,7 @@ async def on_ready():
                         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                         # but it always appends "Bot says..." which gets annoying real fast and 
                         # the voice isn't configurable
-                        eplogger.info(f"\n{escape(response)}")
+                        # eplogger.info(f"\n{escape(response)}")
                         await ai_channel.send(f"> {sent}")
                 elif action == "__PLAY_SFX__":
                     await bot_play_sfx(get_active_voice_client(ai_channel), args['sfx_key'])
@@ -107,16 +107,16 @@ async def on_ready():
                     else:
                         story.revert()
                         new_last_action = story.results[-1] if len(story.results) > 0 else story.context
-                        eplogger.info(f"\n\n>> Reverted to: {new_last_action}")
+                        # eplogger.info(f"\n\n>> Reverted to: {new_last_action}")
                         await ai_channel.send(f"Last action reverted.\n{new_last_action}")
                 elif action == "__NEW_GAME__":
                     context = args['context']
                     if context == '##CONTEXT_NOT_SET##':
                         story = Story(generator, censor=censor)
-                        eplogger.info("\n\n\n\n\n\nStarting a new adventure...")
+                        # eplogger.info("\n\n\n\n\n\nStarting a new adventure...")
                         await ai_channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
                     else:
-                        eplogger.info(f"\n>> {escape(context)}")
+                        # eplogger.info(f"\n>> {escape(context)}")
                         story = Story(generator, escape(context), censor=censor)
                         await ai_channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
                 elif action == "__LOAD_GAME__":
@@ -138,7 +138,7 @@ async def on_ready():
                         voice_client = get_active_voice_client(ai_channel)
                         if voice_client and voice_client.is_connected():
                             await bot_read_message(loop, voice_client, game_load_message)
-                        eplogger.info(f"\n>> {game_load_message}")
+                        # eplogger.info(f"\n>> {game_load_message}")
                         await ai_channel.send(f"> {game_load_message}")
                     except FileNotFoundError:
                         await ai_channel.send("Save file not found.")
@@ -154,7 +154,7 @@ async def on_ready():
                 elif action == "__REMEMBER__":
                     memory = args['memory']
                     story.memory.append(memory[0].upper() + memory[1:] + ".")
-                    eplogger.info(f"\nYou remember {memory}.")
+                    # eplogger.info(f"\nYou remember {memory}.")
                     await ai_channel.send(f">> You remember {memory}.")
                 elif action == "__FORGET__":
                     if len(story.memory) == 0:
@@ -162,7 +162,7 @@ async def on_ready():
                     else:
                         last_memory = story.memory[-1]
                         story.memory = story.memory[:-1]
-                        eplogger.info(f"\n\n>> You forget {last_memory}.")
+                        # eplogger.info(f"\n\n>> You forget {last_memory}.")
                         await ai_channel.send(f"You forget {last_memory}.")
                 elif action == "__TOGGLE_CENSOR__":
                     censor = args['censor']
@@ -189,7 +189,6 @@ async def on_ready():
                 else:
                    savefile = story.savefile
                 save_story(story, file_override=savefile)
-                exit(-1)
 
 
 async def bot_read_message(loop, voice_client, message):
