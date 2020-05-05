@@ -144,8 +144,8 @@ async def on_ready():
                     except IOError:
                         await ai_channel.send("Something went wrong; aborting.")
                 elif action == "__SAVE_GAME__" and story.context is not '':
-                    # TODO add ability to save to new file
-                    if not story.savefile or len(story.savefile.strip()) == 0:
+                    new_save = args['new_save']
+                    if new_save or (not story.savefile and len(story.savefile.strip() == 0)):
                         savefile = args['savefile']
                     else:
                         savefile = story.savefile
@@ -347,8 +347,8 @@ async def game_newgame(ctx, *, text='##CONTEXT_NOT_SET##'):
 @bot.command(name='save', help='Saves the current game')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def game_save(ctx, text=str(uuid.uuid1())):
-    message = {'channel': ctx.channel.id, 'action': '__SAVE_GAME__', 'savefile': text}
+async def game_save(ctx, text=str(uuid.uuid1()), new_save: typing.Optional[bool] = False):
+    message = {'channel': ctx.channel.id, 'action': '__SAVE_GAME__', 'savefile': text, 'new_save': new_save}
     await queue.put(json.dumps(message))
 
 
