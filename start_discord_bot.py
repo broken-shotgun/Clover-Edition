@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import asyncio, json, logging, os, random, re, sys, time, typing, uuid
+import asyncio, io, json, logging, os, random, re, sys, time, typing, uuid
 from datetime import datetime
 from logging.handlers import SysLogHandler
 
@@ -93,7 +93,7 @@ async def on_ready():
                         sent = f"{escape(story_action)}\n{escape(response)}"
                         # handle tts if in a voice channel
                         if voice_client and voice_client.is_connected():
-                            await bot_read_message(loop, voice_client, sent)
+                            await bot_read_message_v2(voice_client, sent)
                         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                         # but it always appends "Bot says..." which gets annoying real fast and 
                         # the voice isn't configurable
@@ -136,7 +136,7 @@ async def on_ready():
                         if last_result and len(last_result) > 0:
                             game_load_message = game_load_message + f"\n{last_result}"
                         if voice_client and voice_client.is_connected():
-                            await bot_read_message(loop, voice_client, game_load_message)
+                            await bot_read_message_v2(voice_client, game_load_message)
                         eplogger.info(f"\n>> {game_load_message}")
                         await ai_channel.send(f"> {game_load_message}")
                     except FileNotFoundError:
@@ -204,6 +204,22 @@ async def bot_read_message(loop, voice_client, message):
         await bot_play_audio(voice_client, filename)
     except Exception as err:
         logger.error(f"Error attempting to generate/play TTS for '{message}': ", exc_info=True)
+
+
+async def bot_read_message_v2(voice_client, message):
+    if voice_client and voice_client.is_connected():
+        synthesis_input = texttospeech.types.SynthesisInput(text=message)
+        voice = texttospeech.types.VoiceSelectionParams(
+            language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU', 'de-DE'
+            name='en-US-Wavenet-F', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
+            ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
+        audio_config = texttospeech.types.AudioConfig(
+            audio_encoding=texttospeech.enums.AudioEncoding.LINEAR16,
+            sample_rate_hertz=96000)
+        response = client.synthesize_speech(synthesis_input, voice, audio_config)
+        voice_client.play(discord.PCMAudio(io.BytesIO(response.audio_content)))
+        while voice_client.is_playing():
+            await asyncio.sleep(1)
 
 
 async def bot_play_audio(voice_client, filename):
