@@ -188,13 +188,17 @@ async def on_ready():
                    savefile = datetime.now().strftime("crashes/%d-%m-%Y_%H%M%S")
                 else:
                    savefile = story.savefile
+                backup_savefile = story.savefile
                 save_story(story, file_override=savefile)
+                story.savefile = backup_savefile
 
 
 @bot.event
 async def on_disconnect():
     logger.info("Disconnected from Discord")
+    backup_savefile = story.savefile
     save_story(story, file_override="backup/disconnect_protect")
+    story.savefile = backup_savefile
 
 
 async def bot_read_message(voice_client, message):
@@ -218,7 +222,6 @@ async def bot_play_audio(voice_client, filename):
         voice_client.play(discord.FFmpegOpusAudio(filename))
         while voice_client.is_playing():
             await asyncio.sleep(1)
-        voice_client.stop()
 
 
 async def bot_play_sfx(voice_client, sfx_key):
@@ -264,14 +267,6 @@ def is_in_channel():
 def escape(text):
     text = re.sub(r'\\(\*|_|`|~|\\|>)', r'\g<1>', text)
     return re.sub(r'(\*|_|`|~|\\|>)', r'\\\g<1>', text)
-
-
-def get_online_members(channel):
-    online_members = []
-    for member in channel.members:
-        if member.status.online:
-            online_members.append(member)
-    return online_members
 
 
 @bot.command(name='next', help='Continues AI Dungeon game')
@@ -387,7 +382,7 @@ async def leave_voice(ctx):
         await ctx.send("You are not currently in a voice channel")
 
 
-@bot.command(name='silence', help='Ends the current dialogue being read by TTS')
+@bot.command(name='silence', help='Silences bot if any audio is currently playing')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def silence_voice(ctx):
