@@ -76,6 +76,7 @@ async def on_ready():
         logger.info(f'Processing message: {msg}'); args = json.loads(msg)
         channel, action = args['channel'], args['action']
         ai_channel = bot.get_channel(channel)
+        # TODO change the way voice client connects, add auto-reconnect when loses connection
         voice_client = get_active_voice_client(ai_channel)
         try:
             async with ai_channel.typing():
@@ -93,7 +94,7 @@ async def on_ready():
                         sent = f"{escape(story_action)}\n{escape(response)}"
                         # handle tts if in a voice channel
                         if voice_client and voice_client.is_connected():
-                            await bot_read_message_v2(voice_client, sent)
+                            await bot_read_message(voice_client, sent)
                         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
                         # but it always appends "Bot says..." which gets annoying real fast and 
                         # the voice isn't configurable
@@ -136,7 +137,7 @@ async def on_ready():
                         if last_result and len(last_result) > 0:
                             game_load_message = game_load_message + f"\n{last_result}"
                         if voice_client and voice_client.is_connected():
-                            await bot_read_message_v2(voice_client, game_load_message)
+                            await bot_read_message(voice_client, game_load_message)
                         eplogger.info(f"\n>> {game_load_message}")
                         await ai_channel.send(f"> {game_load_message}")
                     except FileNotFoundError:
@@ -196,17 +197,7 @@ async def on_disconnect():
     save_story(story, file_override="backup/disconnect_protect")
 
 
-async def bot_read_message(loop, voice_client, message):
-    try:
-        filename = "tmp/message.ogg"
-        tts_task = loop.run_in_executor(None, create_tts_ogg, filename, message)
-        await asyncio.wait_for(tts_task, timeout=90, loop=loop)
-        await bot_play_audio(voice_client, filename)
-    except Exception as err:
-        logger.error(f"Error attempting to generate/play TTS for '{message}': ", exc_info=True)
-
-
-async def bot_read_message_v2(voice_client, message):
+async def bot_read_message(voice_client, message):
     if voice_client and voice_client.is_connected():
         synthesis_input = texttospeech.types.SynthesisInput(text=message)
         voice = texttospeech.types.VoiceSelectionParams(
@@ -245,20 +236,6 @@ async def bot_play_sfx(voice_client, sfx_key):
         await bot_play_audio(voice_client, "sfx/men_in_black.ogg")
     elif sfx_key == "whoami":
         await bot_play_audio(voice_client, "sfx/hello.ogg")
-
-
-def create_tts_ogg(filename, message):
-    synthesis_input = texttospeech.types.SynthesisInput(text=message)
-    voice = texttospeech.types.VoiceSelectionParams(
-        language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU', 'de-DE'
-        name='en-US-Wavenet-F', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
-        ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
-    audio_config = texttospeech.types.AudioConfig(
-        audio_encoding=texttospeech.enums.AudioEncoding.OGG_OPUS)
-    response = client.synthesize_speech(synthesis_input, voice, audio_config)
-    with open(filename, "wb") as out:
-        out.write(response.audio_content)
-        logger.info(f'Audio content written to file "{filename}"')
 
 
 def get_active_voice_client(ctx):
