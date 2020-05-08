@@ -82,13 +82,13 @@ async def on_ready():
                 if action == "__NEXT__":
                     await handle_next(loop, ai_channel, args['author_name'], args['story_action'])
                 elif action == "__PLAY_SFX__":
-                    await handle_play_sfx(voice_client, args['sfx_key'])
+                    await handle_play_sfx(args['sfx_key'])
                 elif action == "__REVERT__":
                     await handle_revert(ai_channel)
                 elif action == "__NEW_GAME__":
                     await handle_newgame(ai_channel, args['context'])
                 elif action == "__LOAD_GAME__":
-                    await handle_loadgame(ai_channel, args['save_game_id'], voice_client)
+                    await handle_loadgame(ai_channel, args['save_game_id'])
                 elif action == "__SAVE_GAME__" and story.context is not '':
                     await handle_savegame(ai_channel, args['save_game_id'], args['new_save'])
                 elif action == "__REMEMBER__":
@@ -98,7 +98,7 @@ async def on_ready():
                 elif action == "__TOGGLE_CENSOR__":
                     await handle_censor(ai_channel, args['censor'])
                 elif action == "__EXIT__": 
-                    await handle_exit(ai_channel, voice_client)
+                    await handle_exit(ai_channel)
                 else:
                     logger.warning(f"Ignoring unknown action sent {action}")
         except Exception as err:
@@ -225,8 +225,8 @@ async def handle_savegame(channel, save_game_id, new_save=False):
     await channel.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
 
 
-async def handle_play_sfx(voice_client, sfx_key):
-    global story
+async def handle_play_sfx(sfx_key):
+    global story, voice_client
     if voice_client and voice_client.is_connected():
         await bot_play_sfx(voice_client, sfx_key)
 
