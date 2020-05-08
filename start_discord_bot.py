@@ -67,7 +67,7 @@ logger.info('Worker instance started')
 
 @bot.event
 async def on_ready():
-    global story, censor, voice_client
+    global story
     logger.info('Bot is ready')
     loop = asyncio.get_event_loop()
     while True:
