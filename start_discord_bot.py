@@ -144,6 +144,8 @@ async def handle_next(loop, channel, author, story_action):
     if story.context == '':
         story.context = escape(story_action)
         eplogger.info(story.context)
+        if voice_client and voice_client.is_connected():
+            await bot_read_message(voice_client, story.context)
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
         eplogger.info(f"\n[{author}] >> {escape(story_action)}")
@@ -388,7 +390,7 @@ async def join_voice(ctx):
     global voice_client
     voice_channel = ctx.message.author.voice.channel
     if voice_channel:
-        voice_client = await voice_channel.connect()
+        voice_client = await voice_channel.connect(reconnect=False)
     else:
         await ctx.send("You are not currently in a voice channel")
 
@@ -398,8 +400,9 @@ async def join_voice(ctx):
 @is_in_channel()
 async def leave_voice(ctx):
     global voice_client
-    if voice_client and voice_client.is_connected():
-        await voice_client.disconnect()
+    if voice_client:
+        if voice_client.is_connected():
+            await voice_client.disconnect()
         voice_client = None
     else:
         await ctx.send("You are not currently in a voice channel")
@@ -460,7 +463,7 @@ async def toggle_censor(ctx, state='on'):
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.CommandNotFound): return
-    logger.error(error)
+    logger.error(error, exc_info=True)
     logger.error(f'Ignoring exception in command: {ctx.command}')
     # TODO handle errors
 
