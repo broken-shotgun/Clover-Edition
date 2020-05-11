@@ -89,7 +89,7 @@ async def on_ready():
                     await handle_newgame(ai_channel, args['context'])
                 elif action == "__LOAD_GAME__":
                     await handle_loadgame(ai_channel, args['save_game_id'])
-                elif action == "__SAVE_GAME__" and story.context is not '':
+                elif action == "__SAVE_GAME__":
                     await handle_savegame(ai_channel, args['save_game_id'], args['new_save'])
                 elif action == "__REMEMBER__":
                     await handle_remember(ai_channel, args['memory'])
@@ -219,6 +219,9 @@ async def handle_loadgame(channel, save_game_id):
 
 async def handle_savegame(channel, save_game_id, new_save=False):
     global story
+    if story.context is '':
+        logger.warning("Story has no context set, skipping save")
+        return
     if new_save or (not story.savefile or len(story.savefile.strip()) == 0):
         savefile = save_game_id
     else:
