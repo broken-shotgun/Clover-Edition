@@ -19,7 +19,7 @@ ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
 CHANNEL = settings.get('discord-bot-channel', 'general')
 DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 EXAMPLE_CONTEXT = "You are fat bastard Christmas man. You are the old Santa Claus. You are love by children, feared by adults, you are a myth and a legend."
-EXAMPLE_PROMPT = "You are flying through the air during Christmas Night in your magical sleight dragged around by reindeer. You are going to be delivering presents to all the good kids this Christmas Night and coal to the bad and naughty kids."
+EXAMPLE_PROMPT = "You are flying through the air during Christmas Night in your magical sleigh dragged around by reindeer. You are going to be delivering presents to all the good kids this Christmas Night and coal to the bad and naughty kids."
 
 if DISCORD_TOKEN is None:
     logger.error('Error: DISCORD_BOT_TOKEN is not set')
@@ -428,12 +428,13 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
     if (key in stats):
         stats[key] += amount
         with open("tmp/stats.txt", "w", encoding="utf-8") as out:
-            out.write(f"Kills: {stats['kills']}\n")
-            out.write(f"Deaths: {stats['deaths']}\n")
-            out.write(f"Whoopies: {stats['whoopies']}\n")
-            out.write(f"Fallbacks: {stats['fallbacks']}\n")
-            out.write(f"MIBs: {stats['mibs']}\n")
-            out.write(f"Wholesomes: {stats['wholesomes']}")
+            out.write(
+                f"Kills: {stats['kills']}\n"
+                f"Deaths: {stats['deaths']}\n"
+                f"Whoopies: {stats['whoopies']}\n"
+                f"Fallbacks: {stats['fallbacks']}\n"
+                f"MIBs: {stats['mibs']}\n"
+                f"Wholesomes: {stats['wholesomes']}")
         # only play sfx if adding a stat
         if amount > 0:
             message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': key}
