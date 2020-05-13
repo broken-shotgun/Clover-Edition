@@ -91,7 +91,7 @@ async def on_ready():
                 elif action == "__LOAD_GAME__":
                     await handle_loadgame(loop, ai_channel, args['save_game_id'])
                 elif action == "__SAVE_GAME__":
-                    await handle_savegame(ai_channel, args['save_game_id'], args['new_save'])
+                    await handle_savegame(loop, ai_channel, args['save_game_id'], args['new_save'])
                 elif action == "__REMEMBER__":
                     await handle_remember(loop, ai_channel, args['memory'])
                 elif action == "__FORGET__":
@@ -433,7 +433,8 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
         key = f"{key}s"
     if (key in stats):
         stats[key] += amount
-        update_stats() # TODO should this be executed in a loop executor?
+        update_task = ctx.bot.loop.run_in_executor(None, update_stats)
+        await asyncio.wait_for(update_task, timeout=5, loop=ctx.bot.loop)
         # only play sfx if adding a stat
         if amount > 0:
             message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': key}
@@ -457,7 +458,8 @@ def update_stats():
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def track_whoami(ctx, *, character):
-    update_whoami(character) # TODO should this be executed in a loop executor?
+    update_task = ctx.bot.loop.run_in_executor(None, update_whoami, character)
+    await asyncio.wait_for(update_task, timeout=5, loop=ctx.bot.loop)
     message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': 'whoami'}
     await queue.put(json.dumps(message))
 
