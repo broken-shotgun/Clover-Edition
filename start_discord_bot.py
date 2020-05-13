@@ -5,7 +5,8 @@ from logging.handlers import SysLogHandler
 
 from getconfig import settings
 from gpt2generator import GPT2Generator
-from play import get_generator, save_story
+from pathlib import Path
+from play import get_generator, save_story, load_story
 from storymanager import Story
 from utils import *
 
@@ -84,17 +85,17 @@ async def on_ready():
                 elif action == "__PLAY_SFX__":
                     await handle_play_sfx(args['sfx_key'])
                 elif action == "__REVERT__":
-                    await handle_revert(ai_channel)
+                    await handle_revert(loop, ai_channel)
                 elif action == "__NEW_GAME__":
-                    await handle_newgame(ai_channel, args['context'])
+                    await handle_newgame(loop, ai_channel, args['context'])
                 elif action == "__LOAD_GAME__":
-                    await handle_loadgame(ai_channel, args['save_game_id'])
+                    await handle_loadgame(loop, ai_channel, args['save_game_id'])
                 elif action == "__SAVE_GAME__":
                     await handle_savegame(ai_channel, args['save_game_id'], args['new_save'])
                 elif action == "__REMEMBER__":
-                    await handle_remember(ai_channel, args['memory'])
+                    await handle_remember(loop, ai_channel, args['memory'])
                 elif action == "__FORGET__":
-                    await handle_forget(ai_channel)
+                    await handle_forget(loop, ai_channel)
                 elif action == "__TOGGLE_CENSOR__":
                     await handle_censor(ai_channel, args['censor'])
                 elif action == "__EXIT__": 
@@ -121,14 +122,14 @@ async def on_disconnect():
     story.savefile = backup_savefile
 
 
-async def handle_newgame(channel, context):
+async def handle_newgame(loop, channel, context):
     global story
     if context == '##CONTEXT_NOT_SET##':
         story = Story(generator, censor=censor)
-        eplogger.info("\n\n\n\n\n\nStarting a new adventure...")
+        await eplog(loop, "\n\n\n\n\n\nStarting a new adventure...")
         await channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
     else:
-        eplogger.info(f"\n>> {escape(context)}")
+        await eplog(loop, f"\n>> {escape(context)}")
         story = Story(generator, escape(context), censor=censor)
         await channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
 
@@ -143,12 +144,12 @@ async def handle_next(loop, channel, author, story_action):
     global story, voice_client
     if story.context == '':
         story.context = escape(story_action)
-        eplogger.info(story.context)
+        await eplog(loop, story.context)
         if voice_client and voice_client.is_connected():
             await bot_read_message(voice_client, story.context)
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
-        eplogger.info(f"\n[{author}] >> {escape(story_action)}")
+        await eplog(loop, f"\n[{author}] >> {escape(story_action)}")
         task = loop.run_in_executor(None, story.act, story_action)
         response = await asyncio.wait_for(task, timeout=120, loop=loop)
         sent = f"{escape(story_action)}\n{escape(response)}"
@@ -158,58 +159,53 @@ async def handle_next(loop, channel, author, story_action):
         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
         # but it always appends "Bot says..." which gets annoying real fast and 
         # the voice isn't configurable
-        eplogger.info(f"\n{escape(response)}")
+        await eplog(loop, f"\n{escape(response)}")
         await channel.send(f"> {sent}")
 
 
-async def handle_revert(channel):
+async def handle_revert(loop, channel):
     global story
     if len(story.actions) == 0:
         await channel.send("You can't go back any farther.")
     else:
         story.revert()
         new_last_action = story.results[-1] if len(story.results) > 0 else story.context
-        eplogger.info(f"\n\n>> Reverted to: {new_last_action}")
+        await eplog(loop, f"\n\n>> Reverted to: {new_last_action}")
         await channel.send(f"Last action reverted.\n{new_last_action}")
 
 
-async def handle_remember(channel, memory):
+async def handle_remember(loop, channel, memory):
     global story
     story.memory.append(memory[0].upper() + memory[1:] + ".")
-    eplogger.info(f"\nYou remember {memory}.")
+    await eplog(loop, f"\nYou remember {memory}.")
     await channel.send(f">> You remember {memory}.")
 
 
-async def handle_forget(channel):
+async def handle_forget(loop, channel):
     global story
     if len(story.memory) == 0:
         await channel.send("There is nothing to forget.")
     else:
         last_memory = story.memory[-1]
         story.memory = story.memory[:-1]
-        eplogger.info(f"\n\n>> You forget {last_memory}.")
+        await eplog(loop, f"\n\n>> You forget {last_memory}.")
         await channel.send(f"You forget {last_memory}.")
 
 
-async def handle_loadgame(channel, save_game_id):
+async def handle_loadgame(loop, channel, save_game_id):
     global story, voice_client
     try:
-        story = Story(generator, censor=censor)
-        with open(f"saves/{save_game_id}.json", "r", encoding="utf-8") as file:
-            savefile = os.path.splitext(file.name.strip())[0]
-            savefile = re.sub(r"^ *saves *[/\\] *(.*) *(?:\.json)?", "\\1", savefile).strip()
-            story.savefile = savefile
-            story.from_json(file.read())
-        last_prompt = story.actions[-1] if len(story.actions) > 0 else ""
+        load_task = loop.run_in_executor(None, load_story, Path(f"saves/{save_game_id}.json"), generator)
+        story, context, last_prompt = await asyncio.wait_for(load_task, timeout=5, loop=loop)
         last_result = story.results[-1] if len(story.results) > 0 else ""
-        game_load_message = f"Previously on AI Dungeon...\n{story.context}"
+        game_load_message = f"Previously on AI Dungeon...\n{context}"
         if last_prompt and len(last_prompt) > 0:
             game_load_message = game_load_message + f"\n{last_prompt}"
         if last_result and len(last_result) > 0:
             game_load_message = game_load_message + f"\n{last_result}"
         if voice_client and voice_client.is_connected():
             await bot_read_message(voice_client, game_load_message)
-        eplogger.info(f"\n>> {game_load_message}")
+        await eplog(loop, f"\n>> {game_load_message}")
         await channel.send(f"> {game_load_message}")
     except FileNotFoundError:
         await channel.send("Save file not found.")
@@ -217,7 +213,7 @@ async def handle_loadgame(channel, save_game_id):
         await channel.send("Something went wrong; aborting.")
 
 
-async def handle_savegame(channel, save_game_id, new_save=False):
+async def handle_savegame(loop, channel, save_game_id, new_save=False):
     global story
     if story.context is '':
         logger.warning("Story has no context set, skipping save")
@@ -226,7 +222,8 @@ async def handle_savegame(channel, save_game_id, new_save=False):
         savefile = save_game_id
     else:
         savefile = story.savefile
-    save_story(story, savefile)
+    save_task = loop.run_in_executor(None, save_story, story, savefile)
+    await asyncio.wait_for(save_task, timeout=5, loop=loop)
     await channel.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
 
 
@@ -244,6 +241,11 @@ async def handle_exit(channel):
     exit(0)
 
 
+async def eplog(loop, message):
+    eplog_task = loop.run_in_executor(None, eplogger.info, message)
+    await asyncio.wait_for(eplog_task, timeout=5, loop=loop)
+
+
 async def bot_read_message(voice_client, message):
     if voice_client and voice_client.is_connected():
         synthesis_input = texttospeech.types.SynthesisInput(text=message)
@@ -258,6 +260,7 @@ async def bot_read_message(voice_client, message):
         voice_client.play(discord.PCMAudio(io.BytesIO(response.audio_content)))
         while voice_client.is_playing():
             await asyncio.sleep(1)
+        voice_client.stop()
 
 
 async def bot_play_audio(voice_client, filename):
@@ -265,6 +268,7 @@ async def bot_play_audio(voice_client, filename):
         voice_client.play(discord.FFmpegOpusAudio(filename))
         while voice_client.is_playing():
             await asyncio.sleep(1)
+        voice_client.stop()
 
 
 async def bot_play_sfx(voice_client, sfx_key):
@@ -393,7 +397,7 @@ async def join_voice(ctx):
     global voice_client
     voice_channel = ctx.message.author.voice.channel
     if voice_channel:
-        voice_client = await voice_channel.connect(reconnect=False)
+        voice_client = await voice_channel.connect()
     else:
         await ctx.send("You are not currently in a voice channel")
 
@@ -404,8 +408,7 @@ async def join_voice(ctx):
 async def leave_voice(ctx):
     global voice_client
     if voice_client:
-        if voice_client.is_connected():
-            await voice_client.disconnect()
+        await voice_client.disconnect(force=True)
         voice_client = None
     else:
         await ctx.send("You are not currently in a voice channel")
@@ -430,14 +433,7 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
         key = f"{key}s"
     if (key in stats):
         stats[key] += amount
-        with open("tmp/stats.txt", "w", encoding="utf-8") as out:
-            out.write(
-                f"Kills: {stats['kills']}\n"
-                f"Deaths: {stats['deaths']}\n"
-                f"Whoopies: {stats['whoopies']}\n"
-                f"Fallbacks: {stats['fallbacks']}\n"
-                f"MIBs: {stats['mibs']}\n"
-                f"Wholesomes: {stats['wholesomes']}")
+        update_stats() # TODO should this be executed in a loop executor?
         # only play sfx if adding a stat
         if amount > 0:
             message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': key}
@@ -446,14 +442,29 @@ async def track_stat(ctx, stat, amount: typing.Optional[int] = 1):
         await ctx.send(f"> Unknown stat '{stat}', not tracked. (Valid stat values = {stats.keys()}")
 
 
+def update_stats():
+    with open("tmp/stats.txt", "w", encoding="utf-8") as out:
+        out.write(
+            f"Kills: {stats['kills']}\n"
+            f"Deaths: {stats['deaths']}\n"
+            f"Whoopies: {stats['whoopies']}\n"
+            f"Fallbacks: {stats['fallbacks']}\n"
+            f"MIBs: {stats['mibs']}\n"
+            f"Wholesomes: {stats['wholesomes']}")
+
+
 @bot.command(name='hello', help=f'Sets character currently playing as.')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def track_whoami(ctx, *, character):
-    with open("tmp/whoami.txt", "w", encoding="utf-8") as out:
-        out.write(f" Currently playing as: {character}")
+    update_whoami(character) # TODO should this be executed in a loop executor?
     message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': 'whoami'}
     await queue.put(json.dumps(message))
+
+
+def update_whoami(character):
+    with open("tmp/whoami.txt", "w", encoding="utf-8") as out:
+        out.write(f" Currently playing as: {character}")
 
 
 @bot.command(name='censor', help='Toggles censor (on/off)')
