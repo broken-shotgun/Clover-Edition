@@ -299,13 +299,12 @@ def escape(text):
     return re.sub(r'(\*|_|`|~|\\|>)', r'\\\g<1>', text)
 
 
-@bot.command(name='next', help='Continues AI Dungeon game')
+@bot.command(name='you', help='Continues AI Dungeon game', aliases=['next'])
 @is_in_channel()
 async def game_next(ctx, *, text='continue'):
     action = text
     if action[0] == '!':
         action = action[1:]
-        logger.info(f'Interpretting action as literal, skip action formatting.')
     elif action[0] == '"' or action[0] == '\'':
         action = "You say " + action
     else:
@@ -322,6 +321,22 @@ async def game_next(ctx, *, text='continue'):
             action = end_sentence(action)
     message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
     await queue.put(json.dumps(message))
+
+
+@bot.command(name='!', help='Continues AI Dungeon game without additional formatting')
+@is_in_channel()
+async def game_story(ctx, *, action='You continue.'):
+    message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
+    await queue.put(json.dumps(message))
+
+
+@bot.command(name='say', help='Continues AI Dungeon game by saying given dialog')
+@is_in_channel()
+async def game_say(ctx, *, dialog=''):
+    if len(dialog) > 0:
+        action = f"You say \"{dialog}\""
+        message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
+        await queue.put(json.dumps(message))
 
 
 @bot.command(name='remember', help='Commits something permanently to the AI\'s memory')
