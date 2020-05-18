@@ -458,8 +458,10 @@ def update_stats():
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def track_whoami(ctx, *, character):
-    update_task = ctx.bot.loop.run_in_executor(None, update_whoami, character)
-    await asyncio.wait_for(update_task, timeout=5, loop=ctx.bot.loop)
+    update_who_task = ctx.bot.loop.run_in_executor(None, update_whoami, character)
+    await asyncio.wait_for(update_who_task, timeout=5, loop=ctx.bot.loop)
+    update_list_task = ctx.bot.loop.run_in_executor(None, update_character_list, character)
+    await asyncio.wait_for(update_list_task, timeout=5, loop=ctx.bot.loop)
     message = {'channel': ctx.channel.id, 'action': '__PLAY_SFX__', 'sfx_key': 'whoami'}
     await queue.put(json.dumps(message))
 
@@ -467,6 +469,12 @@ async def track_whoami(ctx, *, character):
 def update_whoami(character):
     with open("tmp/whoami.txt", "w", encoding="utf-8") as out:
         out.write(f" Currently playing as: {character}")
+
+
+def update_character_list(character):
+    with open("tmp/character_list.log", "a", encoding="utf-8") as out:
+        timestamp = datetime.now().strftime("%A %m-%d-%Y %H:%M:%S")
+        out.write(f"\n{timestamp} - {character}")
 
 
 @bot.command(name='censor', help='Toggles censor (on/off)')
