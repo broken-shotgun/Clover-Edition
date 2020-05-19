@@ -325,9 +325,10 @@ async def game_next(ctx, *, text='continue'):
 
 @bot.command(name='!', help='Continues AI Dungeon game without additional formatting')
 @is_in_channel()
-async def game_story(ctx, *, action='You continue.'):
-    message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
-    await queue.put(json.dumps(message))
+async def game_story(ctx, *, action=''):
+    if len(action) > 0:
+        message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
+        await queue.put(json.dumps(message))
 
 
 @bot.command(name='say', help='Continues AI Dungeon game by saying given dialog')
