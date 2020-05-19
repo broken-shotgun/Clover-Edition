@@ -329,6 +329,8 @@ async def game_story(ctx, *, action=''):
     if len(action) > 0:
         message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
         await queue.put(json.dumps(message))
+    else:
+        await ctx.send("Please enter something valid to continue the story.")
 
 
 @bot.command(name='say', help='Continues AI Dungeon game by saying given dialog')
@@ -338,6 +340,8 @@ async def game_say(ctx, *, dialog=''):
         action = f"You say \"{dialog}\""
         message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
         await queue.put(json.dumps(message))
+    else:
+        await ctx.send("Please enter something valid to say.")
 
 
 @bot.command(name='remember', help='Commits something permanently to the AI\'s memory')
