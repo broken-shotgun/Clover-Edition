@@ -124,14 +124,14 @@ async def on_disconnect():
 
 async def handle_newgame(loop, channel, context):
     global story
-    if context == '##CONTEXT_NOT_SET##':
-        story = Story(generator, censor=censor)
-        await eplog(loop, "\n\n\n\n\n\nStarting a new adventure...")
-        await channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
-    else:
+    if len(context) > 0:
         await eplog(loop, f"\n>> {escape(context)}")
         story = Story(generator, escape(context), censor=censor)
         await channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
+    else:
+        story = Story(generator, censor=censor)
+        await eplog(loop, "\n\n\n\n\n\nStarting a new adventure...")
+        await channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
 
 
 async def handle_censor(channel, censor):
@@ -372,7 +372,7 @@ async def game_revert(ctx):
 @bot.command(name='newgame', help='Starts a new game')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def game_newgame(ctx, *, initial_context='##CONTEXT_NOT_SET##'):
+async def game_newgame(ctx, *, initial_context=''):
     await game_save(ctx)
     message = {'channel': ctx.channel.id, 'action': '__NEW_GAME__', 'context': initial_context}
     await queue.put(json.dumps(message))
@@ -389,12 +389,12 @@ async def game_save(ctx, save_game_id=str(uuid.uuid1()), new_save: typing.Option
 @bot.command(name='load', help='Load the game with given ID')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def game_load(ctx, *, save_game_id='##SAVE_GAME_ID##'):
-    if save_game_id == '##SAVE_GAME_ID##':
-        await ctx.send("Please enter save file id.")
-    else:
+async def game_load(ctx, *, save_game_id=''):
+    if len(save_game_id) > 0:
         message = {'channel': ctx.channel.id, 'action': '__LOAD_GAME__', 'save_game_id': save_game_id}
         await queue.put(json.dumps(message))
+    else:
+        await ctx.send("Please enter save file id.")
 
 
 @bot.command(name='exit', help='Saves and exits the current game')
