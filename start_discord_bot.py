@@ -19,8 +19,8 @@ bot = commands.Bot(command_prefix='!')
 ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
 CHANNEL = settings.get('discord-bot-channel', 'general')
 DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-EXAMPLE_CONTEXT = "You are fat bastard Christmas man. You are the old Santa Claus. You are love by children, feared by adults, you are a myth and a legend."
-EXAMPLE_PROMPT = "You are flying through the air during Christmas Night in your magical sleigh dragged around by reindeer. You are going to be delivering presents to all the good kids this Christmas Night and coal to the bad and naughty kids."
+EXAMPLE_CONTEXT = "You are Walter White. You are a gifted, brilliant, overqualified, underappreciated high school chemistry teacher."
+EXAMPLE_PROMPT = "You are a timid 50 year old White male with light brown hair and a mustache who wears sweater vests. Your wife Skylar is attractive, but the two of you have grown distant in recent years. Your son, Flynn is crippled, but also irrepressibly optimistic and thinks the world of you. You work a second job at a car wash to make ends meet. After collapsing at the car wash one day you went to the hospital and were diagnosed with terminal lung cancer. You discover that Jesse Pinkman, a former student of yours, makes a living cooking meth. You approach Jesse about cooking meth together."
 
 if DISCORD_TOKEN is None:
     logger.error('Error: DISCORD_BOT_TOKEN is not set')
@@ -275,9 +275,9 @@ async def bot_play_sfx(voice_client, sfx_key):
     if sfx_key == "kills":
         await bot_play_audio(voice_client, "sfx/monster_kill.ogg")
     elif sfx_key == "deaths":
-        await bot_play_audio(voice_client, "sfx/im_dying.ogg")
+        await bot_play_audio(voice_client, "sfx/pacman_death.ogg")
     elif sfx_key == "whoopies":
-        await bot_play_audio(voice_client, "sfx/nice.ogg")
+        await bot_play_audio(voice_client, "sfx/anime_wow.ogg")
     elif sfx_key == "fallbacks":
         await bot_play_audio(voice_client, "sfx/mt_everest.ogg")
     elif sfx_key =="wholesomes":
@@ -337,7 +337,10 @@ async def game_story(ctx, *, action=''):
 @is_in_channel()
 async def game_say(ctx, *, dialog=''):
     if len(dialog) > 0:
-        action = f"You say \"{dialog}\""
+        if dialog[0] == '"' or dialog[0] == '\'':
+            action = f"You say {dialog}"
+        else:
+            action = f"You say \"{dialog}\""
         message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
         await queue.put(json.dumps(message))
     else:
@@ -493,7 +496,7 @@ def update_whoami(character):
 
 def update_character_list(character):
     with open("tmp/character_list.log", "a", encoding="utf-8") as out:
-        timestamp = datetime.now().strftime("%A %m-%d-%Y %H:%M:%S")
+        timestamp = datetime.now().strftime("%a %m-%d-%Y %H:%M:%S")
         out.write(f"\n{timestamp} - {character}")
 
 
