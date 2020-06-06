@@ -19,8 +19,8 @@ bot = commands.Bot(command_prefix='!')
 ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
 CHANNEL = settings.get('discord-bot-channel', 'general')
 DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-EXAMPLE_CONTEXT = "You are Walter White. You are a gifted, brilliant, overqualified, underappreciated high school chemistry teacher."
-EXAMPLE_PROMPT = "You are a timid 50 year old White male with light brown hair and a mustache who wears sweater vests. Your wife Skylar is attractive, but the two of you have grown distant in recent years. Your son, Flynn is crippled, but also irrepressibly optimistic and thinks the world of you. You work a second job at a car wash to make ends meet. After collapsing at the car wash one day you went to the hospital and were diagnosed with terminal lung cancer. You discover that Jesse Pinkman, a former student of yours, makes a living cooking meth. You approach Jesse about cooking meth together."
+EXAMPLE_CONTEXT = "You are Max Powers, Founder and CEO of Powers Incorporated."
+EXAMPLE_PROMPT = "Your quest for power and money on Earth has led to it's destruction.  You pour all your wealth into a space program.  You take your wife Rimes and move to Mars."
 
 if DISCORD_TOKEN is None:
     logger.error('Error: DISCORD_BOT_TOKEN is not set')
