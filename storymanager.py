@@ -8,7 +8,7 @@ with open("data/censored_words.txt", "r") as f:
     censored_words = [l.replace("\n", "") for l in f.readlines()]
 
 pf = ProfanityFilter(custom_censor_list=censored_words)
-pf.censor_char = '#'
+pf.set_censor('#')
 
 def remove_profanity(text):
     return pf.censor(text)
