@@ -91,7 +91,7 @@ async def on_ready():
                 elif action == "__LOAD_GAME__":
                     await handle_loadgame(loop, ai_channel, args['save_game_id'])
                 elif action == "__SAVE_GAME__":
-                    await handle_savegame(loop, ai_channel, args['save_game_id'], args['new_save'])
+                    await handle_savegame(loop, ai_channel, args['override_save_game_id'])
                 elif action == "__REMEMBER__":
                     await handle_remember(loop, ai_channel, args['memory'])
                 elif action == "__FORGET__":
@@ -126,10 +126,10 @@ async def handle_newgame(loop, channel, context):
     global story
     if len(context) > 0:
         await eplog(loop, f"\n>> {escape(context)}")
-        story = Story(generator, escape(context), censor=censor)
+        story = Story(generator, escape(context), censor=censor, savefile=str(uuid.uuid4()))
         await channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
-        story = Story(generator, censor=censor)
+        story = Story(generator, censor=censor, savefile=str(uuid.uuid4()))
         await eplog(loop, "\n\n\n\n\n\nStarting a new adventure...")
         await channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
 
@@ -213,15 +213,17 @@ async def handle_loadgame(loop, channel, save_game_id):
         await channel.send("Something went wrong; aborting.")
 
 
-async def handle_savegame(loop, channel, save_game_id, new_save=False):
+async def handle_savegame(loop, channel, override_save_game_id=''):
     global story
     if story.context is '':
         logger.warning("Story has no context set, skipping save")
         return
-    if new_save or (not story.savefile or len(story.savefile.strip()) == 0):
-        savefile = save_game_id
-    else:
+    if len(override_save_game_id.strip()) != 0:
+        savefile = override_save_game_id
+    elif len(story.savefile.strip()) != 0:
         savefile = story.savefile
+    else:
+        savefile = str(uuid.uuid4())
     save_task = loop.run_in_executor(None, save_story, story, savefile)
     await asyncio.wait_for(save_task, timeout=5, loop=loop)
     await channel.send(f"Game saved.\nTo load the game, type '!load {savefile}'")
@@ -388,8 +390,8 @@ async def game_newgame(ctx, *, initial_context=''):
 @bot.command(name='save', help='Saves the current game')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def game_save(ctx, save_game_id=str(uuid.uuid1()), new_save: typing.Optional[bool] = False):
-    message = {'channel': ctx.channel.id, 'action': '__SAVE_GAME__', 'save_game_id': save_game_id, 'new_save': new_save}
+async def game_save(ctx, override_save_game_id=''):
+    message = {'channel': ctx.channel.id, 'action': '__SAVE_GAME__', 'override_save_game_id': override_save_game_id}
     await queue.put(json.dumps(message))
 
 

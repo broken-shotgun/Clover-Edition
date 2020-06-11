@@ -16,16 +16,16 @@ def remove_profanity(text):
 class Story:
     # the initial prompt is very special.
     # We want it to be permanently in the AI's limited memory (as well as possibly other strings of text.)
-    def __init__(self, generator, context='', memory=None, censor=True):
+    def __init__(self, generator, context='', memory=None, censor=True, savefile=''):
         if memory is None:
             memory = []
         self.generator = generator
         self.context = context
         self.memory = memory
         self.censor = censor
+        self.savefile = savefile
         self.actions = []
         self.results = []
-        self.savefile = ""
 
     def act(self, action, record=True, format=True):
         assert (self.context.strip() + action.strip())
