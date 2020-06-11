@@ -218,9 +218,10 @@ async def handle_savegame(loop, channel, override_save_game_id=''):
     if story.context is '':
         logger.warning("Story has no context set, skipping save")
         return
-    if len(override_save_game_id.strip()) != 0:
+    if len(override_save_game_id.strip()) > 0:
         savefile = override_save_game_id
-    elif len(story.savefile.strip()) != 0:
+        story.savefile = override_save_game_id
+    elif len(story.savefile.strip()) > 0:
         savefile = story.savefile
     else:
         savefile = str(uuid.uuid4())
