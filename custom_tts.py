@@ -1,10 +1,9 @@
 import datetime, os, requests
 
 class CogServTTS:
-    def __init__(self, endpoint_url, subscription_key, resource_name, voice_name):
+    def __init__(self, endpoint_url, subscription_key, voice_name):
         self.endpoint_url = endpoint_url
         self.subscription_key = subscription_key
-        self.resource_name = resource_name
         self.voice_name = voice_name
         self.access_token = ''
         self.token_expiration = datetime.datetime.fromtimestamp(0)
@@ -35,7 +34,7 @@ class CogServTTS:
             'Authorization': 'Bearer ' + self.access_token,
             'Content-Type': 'application/ssml+xml',
             'X-Microsoft-OutputFormat': 'riff-24khz-16bit-mono-pcm',
-            'User-Agent': self.resource_name
+            'User-Agent': self.voice_name
         }
         body = f"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xml:lang=\"en-US\"><voice name=\"{self.voice_name}\">{message}</voice></speak>"
         response = requests.post(self.endpoint_url, headers=headers, data=body)
@@ -47,6 +46,6 @@ class CogServTTS:
             print("\nStatus code: " + str(response.status_code) + "\nSomething went wrong. Check your subscription key and headers.\n")
 
 if __name__ == '__main__':
-    tts = CogServTTS(os.getenv('MS_COG_SERV_ENDPOINT_URL'), os.getenv('MS_COG_SERV_SUB_KEY'), resource_name='Gordon', voice_name='Gordon')
+    tts = CogServTTS(os.getenv('MS_COG_SERV_ENDPOINT_URL'), os.getenv('MS_COG_SERV_SUB_KEY'), voice_name='Gordon')
     tts.save_audio("Hello world, it's me Gordon!", "gordon1")
     tts.save_audio("I like spaghetti, but don't you forgetti!", "gordon2")
