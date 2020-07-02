@@ -266,6 +266,21 @@ async def bot_read_message(voice_client, message):
         voice_client.stop()
 
 
+# '''
+# Uses Microsoft Cognition Services TTS.
+# '''
+# from custom_tts import CogServTTS
+# cogtts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
+# async def bot_read_message_v2(loop, voice_client, message):
+#     if voice_client and voice_client.is_connected():
+#         tts_task = loop.run_in_executor(None, cogtts.save_audio, message)
+#         await asyncio.wait_for(tts_task, timeout=5, loop=loop)
+#         voice_client.play(discord.FFmpegOpusAudio('tmp/sample.mp3'))
+#         while voice_client.is_playing():
+#             await asyncio.sleep(1)
+#         voice_client.stop()
+
+
 async def bot_play_audio(voice_client, filename):
     if voice_client and voice_client.is_connected():
         voice_client.play(discord.FFmpegOpusAudio(filename))

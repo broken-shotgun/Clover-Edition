@@ -1,18 +1,17 @@
 import datetime, os, requests
 
 class CogServTTS:
-    def __init__(self, endpoint_url, subscription_key, voice_name):
-        self.endpoint_url = endpoint_url
+    def __init__(self, subscription_key):
+        self.region = "eastus"
+        self.deployment_id = "8f45de58-5f05-4014-88cb-8ca25a11e8e3"
+        self.voice_name = "Oprah2"
+        self.endpoint_url = f"https://{self.region}.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId={self.deployment_id}"
         self.subscription_key = subscription_key
-        self.voice_name = voice_name
         self.access_token = ''
         self.token_expiration = datetime.datetime.fromtimestamp(0)
 
-    '''
-    Region must match endpoint url, defaults to 'eastus'
-    '''
-    def get_token(self, region='eastus'):
-        fetch_token_url = f'https://{region}.api.cognitive.microsoft.com/sts/v1.0/issueToken'
+    def get_token(self):
+        fetch_token_url = f'https://{self.region}.api.cognitive.microsoft.com/sts/v1.0/issueToken'
         headers = {
             'Ocp-Apim-Subscription-Key': self.subscription_key
         }
@@ -33,19 +32,18 @@ class CogServTTS:
         headers = {
             'Authorization': 'Bearer ' + self.access_token,
             'Content-Type': 'application/ssml+xml',
-            'X-Microsoft-OutputFormat': 'riff-24khz-16bit-mono-pcm',
-            'User-Agent': self.voice_name
+            'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+            'User-Agent': 'K9000'
         }
         body = f"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xml:lang=\"en-US\"><voice name=\"{self.voice_name}\">{message}</voice></speak>"
         response = requests.post(self.endpoint_url, headers=headers, data=body)
         if response.status_code == 200:
-            with open(f'tmp/{filename}.wav', 'wb') as audio:
+            with open(f'tmp/{filename}.mp3', 'wb') as audio:
                 audio.write(response.content)
                 print("\nStatus code: " + str(response.status_code) + "\nYour TTS is ready for playback.\n")
         else:
             print("\nStatus code: " + str(response.status_code) + "\nSomething went wrong. Check your subscription key and headers.\n")
 
 if __name__ == '__main__':
-    tts = CogServTTS(os.getenv('MS_COG_SERV_ENDPOINT_URL'), os.getenv('MS_COG_SERV_SUB_KEY'), voice_name='Gordon')
-    tts.save_audio("Hello world, it's me Gordon!", "gordon1")
-    tts.save_audio("I like spaghetti, but don't you forgetti!", "gordon2")
+    tts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
+    tts.save_audio("It's me, Oprah!  It's time for my new favorite thing: AIPD.  It's my favorite show to watch on Twitch.  Did you know they stream AI Dungeon every night at 8pm?", "oprah1")
