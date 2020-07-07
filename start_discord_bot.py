@@ -37,13 +37,13 @@ logger.addHandler(syslog)
 logger.setLevel(logging.INFO)
 
 generator = get_generator()
-censor = True
-story = Story(generator, censor=censor)
+story = Story(generator, censor=True)
 queue = asyncio.Queue()
 
 # TTS setup
 client = texttospeech.TextToSpeechClient()
 voice_client = None
+v2_voice_toggle = False
 
 # stat tracker setup
 stats = {
@@ -126,10 +126,10 @@ async def handle_newgame(loop, channel, context):
     global story
     if len(context) > 0:
         await eplog(loop, f"\n>> {escape(context)}")
-        story = Story(generator, escape(context), censor=censor, savefile=str(uuid.uuid4()))
+        story = Story(generator, escape(context), censor=True, savefile=str(uuid.uuid4()))
         await channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
-        story = Story(generator, censor=censor, savefile=str(uuid.uuid4()))
+        story = Story(generator, censor=True, savefile=str(uuid.uuid4()))
         await eplog(loop, "\n\n\n\n\n\nStarting a new adventure...")
         await channel.send(f"Provide initial context with !next (Ex. {EXAMPLE_CONTEXT})")
 
@@ -146,7 +146,10 @@ async def handle_next(loop, channel, author, story_action):
         story.context = escape(story_action)
         await eplog(loop, story.context)
         if voice_client and voice_client.is_connected():
-            await bot_read_message(voice_client, story.context)
+            if v2_voice_toggle:
+                await bot_read_message_v2(loop, voice_client, story.context)
+            else:
+                await bot_read_message(voice_client, story.context)
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
         await eplog(loop, f"\n[{author}] >> {escape(story_action)}")
@@ -155,7 +158,10 @@ async def handle_next(loop, channel, author, story_action):
         sent = f"{escape(story_action)}\n{escape(response)}"
         # handle tts if in a voice channel
         if voice_client and voice_client.is_connected():
-            await bot_read_message(voice_client, sent)
+            if v2_voice_toggle:
+                await bot_read_message_v2(loop, voice_client, sent)
+            else:
+                await bot_read_message(voice_client, sent)
         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
         # but it always appends "Bot says..." which gets annoying real fast and 
         # the voice isn't configurable
@@ -204,7 +210,10 @@ async def handle_loadgame(loop, channel, save_game_id):
         if last_result and len(last_result) > 0:
             game_load_message = game_load_message + f"\n{last_result}"
         if voice_client and voice_client.is_connected():
-            await bot_read_message(voice_client, game_load_message)
+            if v2_voice_toggle:
+                await bot_read_message_v2(loop, voice_client, game_load_message)
+            else:
+                await bot_read_message(voice_client, game_load_message)
         await eplog(loop, f"\n>> {game_load_message}")
         await channel.send(f"> {game_load_message}")
     except FileNotFoundError:
@@ -266,19 +275,19 @@ async def bot_read_message(voice_client, message):
         voice_client.stop()
 
 
-# '''
-# Uses Microsoft Cognition Services TTS.
-# '''
-# from custom_tts import CogServTTS
-# cogtts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
-# async def bot_read_message_v2(loop, voice_client, message):
-#     if voice_client and voice_client.is_connected():
-#         tts_task = loop.run_in_executor(None, cogtts.save_audio, message)
-#         await asyncio.wait_for(tts_task, timeout=5, loop=loop)
-#         voice_client.play(discord.FFmpegOpusAudio('tmp/sample.mp3'))
-#         while voice_client.is_playing():
-#             await asyncio.sleep(1)
-#         voice_client.stop()
+'''
+Uses Microsoft Cognition Services TTS.
+'''
+from custom_tts import CogServTTS
+cogtts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
+async def bot_read_message_v2(loop, voice_client, message):
+    if voice_client and voice_client.is_connected():
+        tts_task = loop.run_in_executor(None, cogtts.save_audio, message)
+        await asyncio.wait_for(tts_task, timeout=5, loop=loop)
+        voice_client.play(discord.FFmpegOpusAudio('tmp/sample.mp3'))
+        while voice_client.is_playing():
+            await asyncio.sleep(1)
+        voice_client.stop()
 
 
 async def bot_play_audio(voice_client, filename):
@@ -524,6 +533,15 @@ def update_character_list(character):
 async def toggle_censor(ctx, state='on'):
     message = {'channel': ctx.channel.id, 'action': '__TOGGLE_CENSOR__', 'censor': (state == 'on')}
     await queue.put(json.dumps(message))
+
+
+@bot.command(name='toggle_v2_voice', help='Toggles between Google TTS and Microsoft TTS')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def toggle_v2_voice(ctx):
+    global v2_voice_toggle
+    v2_voice_toggle = not v2_voice_toggle
+    await ctx.send("Using Microsoft Oprah voice" if v2_voice_toggle else "Using Google Female Voice")
 
 
 @bot.event
