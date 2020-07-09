@@ -3,8 +3,8 @@ import datetime, os, requests
 class CogServTTS:
     def __init__(self, subscription_key):
         self.region = "eastus"
-        self.deployment_id = "4efa129e-5be8-4220-b062-84bbe54212ed"
-        self.voice_name = "Oprah100"
+        self.deployment_id = "b0d1195f-21e4-49dd-ada0-041fa313fe7c"
+        self.voice_name = "Oprah150"
         self.endpoint_url = f"https://{self.region}.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId={self.deployment_id}"
         self.subscription_key = subscription_key
         self.access_token = ''
