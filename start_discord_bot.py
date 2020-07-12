@@ -43,7 +43,7 @@ queue = asyncio.Queue()
 # TTS setup
 client = texttospeech.TextToSpeechClient()
 voice_client = None
-v2_voice_toggle = False
+v2_voice_toggle = True
 
 # stat tracker setup
 stats = {
@@ -284,7 +284,9 @@ async def bot_read_message_v2(loop, voice_client, message):
     if voice_client and voice_client.is_connected():
         tts_task = loop.run_in_executor(None, cogtts.save_audio, message)
         await asyncio.wait_for(tts_task, timeout=5, loop=loop)
-        voice_client.play(discord.FFmpegOpusAudio('tmp/sample.mp3'))
+        clip = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio('tmp/sample.mp3'))
+        clip.volume = 2.0
+        voice_client.play(clip)
         while voice_client.is_playing():
             await asyncio.sleep(1)
         voice_client.stop()
