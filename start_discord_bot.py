@@ -280,12 +280,13 @@ Uses Microsoft Cognition Services TTS.
 '''
 from custom_tts import CogServTTS
 cogtts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
+cogtts_volume = 7.0
+cogtts_speed = 1.25
 async def bot_read_message_v2(loop, voice_client, message):
     if voice_client and voice_client.is_connected():
         tts_task = loop.run_in_executor(None, cogtts.save_audio, message)
-        await asyncio.wait_for(tts_task, timeout=5, loop=loop)
-        clip = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio('tmp/sample.mp3'))
-        clip.volume = 2.0
+        await asyncio.wait_for(tts_task, timeout=30, loop=loop)
+        clip = discord.FFmpegPCMAudio('tmp/sample.wav', options=f'-filter:a "volume={cogtts_volume}dB,atempo={cogtts_speed}"')
         voice_client.play(clip)
         while voice_client.is_playing():
             await asyncio.sleep(1)
@@ -473,6 +474,28 @@ async def silence_voice(ctx):
     global voice_client
     if voice_client and voice_client.is_playing():
         voice_client.stop()
+
+
+@bot.command(name='volume', help='Changes CogTTS voice volume (does not affect Google WaveNet)')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def set_voice_volume(ctx, amount: typing.Optional[float] = 1.0):
+    global cogtts_volume
+    cogtts_volume = clamp(amount, 0.0, 20.0)
+    await ctx.send(f"> TTS volume set to +{cogtts_volume}dB")
+
+
+@bot.command(name='speed', help='Changes CogTTS voice speed (does not affect Google WaveNet)')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def set_voice_speed(ctx, amount: typing.Optional[float] = 1.0):
+    global cogtts_speed
+    cogtts_speed = clamp(amount, 0.5, 2.0)
+    await ctx.send(f"> TTS playback speed set to {cogtts_speed}")
+
+
+def clamp(n, minn, maxn):
+    return max(min(maxn, n), minn)
 
 
 @bot.command(name='track', help=f'Tracks stat.')

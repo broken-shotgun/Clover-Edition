@@ -32,15 +32,14 @@ class CogServTTS:
         headers = {
             'Authorization': 'Bearer ' + self.access_token,
             'Content-Type': 'application/ssml+xml',
-            'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+            'X-Microsoft-OutputFormat': 'riff-24khz-16bit-mono-pcm',
             'User-Agent': 'K9000'
         }
         body = f"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xml:lang=\"en-US\"><voice name=\"{self.voice_name}\">{message}</voice></speak>"
         response = requests.post(self.endpoint_url, headers=headers, data=body)
         if response.status_code == 200:
-            with open(f'tmp/{filename}.mp3', 'wb') as audio:
+            with open(f'tmp/{filename}.wav', 'wb') as audio:
                 audio.write(response.content)
-                print("\nStatus code: " + str(response.status_code) + "\nYour TTS is ready for playback.\n")
         else:
             print("\nStatus code: " + str(response.status_code) + "\nSomething went wrong. Check your subscription key and headers.\n")
 
