@@ -280,17 +280,20 @@ Uses Microsoft Cognition Services TTS.
 '''
 from custom_tts import CogServTTS
 cogtts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
-cogtts_volume = 7.0
-cogtts_speed = 1.25
+cogtts_volume = 7.5
+cogtts_speed = 1.1
 async def bot_read_message_v2(loop, voice_client, message):
     if voice_client and voice_client.is_connected():
-        tts_task = loop.run_in_executor(None, cogtts.save_audio, message)
-        await asyncio.wait_for(tts_task, timeout=30, loop=loop)
-        clip = discord.FFmpegPCMAudio('tmp/sample.wav', options=f'-filter:a "volume={cogtts_volume}dB,atempo={cogtts_speed}"')
-        voice_client.play(clip)
-        while voice_client.is_playing():
-            await asyncio.sleep(1)
-        voice_client.stop()
+        try:
+            tts_task = loop.run_in_executor(None, cogtts.save_audio, message)
+            await asyncio.wait_for(tts_task, timeout=30, loop=loop)
+            clip = discord.FFmpegPCMAudio('tmp/sample.wav', options=f'-filter:a "volume={cogtts_volume}dB,atempo={cogtts_speed}"')
+            voice_client.play(clip)
+            while voice_client.is_playing():
+                await asyncio.sleep(1)
+            voice_client.stop()
+        except TimeoutError:
+            await ctx.send("Error: TTS command timed out")
 
 
 async def bot_play_audio(voice_client, filename):
