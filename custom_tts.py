@@ -36,7 +36,7 @@ class CogServTTS:
             'User-Agent': 'K9000'
         }
         body = f"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xml:lang=\"en-US\"><voice name=\"{self.voice_name}\">{message}</voice></speak>"
-        response = requests.post(self.endpoint_url, headers=headers, data=body)
+        response = requests.post(self.endpoint_url, headers=headers, data=body.encode('utf-8'))
         if response.status_code == 200:
             with open(f'tmp/{filename}.wav', 'wb') as audio:
                 audio.write(response.content)
@@ -45,4 +45,4 @@ class CogServTTS:
 
 if __name__ == '__main__':
     tts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
-    tts.save_audio("It's me, Oprah!  It's time for my new favorite thing: AIPD.  It's my favorite show to watch on Twitch.  Did you know they stream AI Dungeon every night at 8pm?", "oprah1")
+    tts.save_audio("It's me, Oprah!  It's time for my new favorite thing: AIPD.  It's my favorite show to watch on Twitch…  Did you know they stream AI Dungeon every night at 8pm?", "oprahTest")
