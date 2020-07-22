@@ -292,7 +292,7 @@ async def bot_read_message_v2(loop, voice_client, message):
             while voice_client.is_playing():
                 await asyncio.sleep(1)
             voice_client.stop()
-        except TimeoutError:
+        except asyncio.CancelledError:
             await ctx.send("Error: TTS command timed out")
 
 
