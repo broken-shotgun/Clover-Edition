@@ -125,8 +125,8 @@ async def on_disconnect():
 async def handle_newgame(loop, channel, context):
     global story
     if len(context) > 0:
-        await eplog(loop, f"\n>> {escape(context)}")
-        story = Story(generator, escape(context), censor=True, savefile=str(uuid.uuid4()))
+        await eplog(loop, f"\n>> {context}")
+        story = Story(generator, context, censor=True, savefile=str(uuid.uuid4()))
         await channel.send(f"Setting context for new story...\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
         story = Story(generator, censor=True, savefile=str(uuid.uuid4()))
@@ -143,7 +143,7 @@ async def handle_censor(channel, censor):
 async def handle_next(loop, channel, author, story_action):
     global story, voice_client
     if story.context == '':
-        story.context = escape(story_action)
+        story.context = story_action
         await eplog(loop, story.context)
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
@@ -153,10 +153,10 @@ async def handle_next(loop, channel, author, story_action):
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
         if story_action != '':
-            await eplog(loop, f"\n[{author}] >> {escape(story_action)}")
+            await eplog(loop, f"\n[{author}] >> {story_action}")
         task = loop.run_in_executor(None, story.act, story_action)
         response = await asyncio.wait_for(task, timeout=120, loop=loop)
-        sent = f"{escape(story_action)}\n{escape(response)}"
+        sent = f"{story_action}\n{escape(response)}"
         # handle tts if in a voice channel
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
@@ -341,7 +341,7 @@ def escape(text):
     return re.sub(r'(\*|_|`|~|\\|>)', r'\\\g<1>', text)
 
 
-@bot.command(name='you', help='Continues AI Dungeon game', aliases=['next'])
+@bot.command(name='next', help='Continues AI Dungeon game', aliases=['you'])
 @is_in_channel()
 async def game_next(ctx, *, text=''):
     action = text
