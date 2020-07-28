@@ -152,7 +152,8 @@ async def handle_next(loop, channel, author, story_action):
                 await bot_read_message(voice_client, story.context)
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
-        await eplog(loop, f"\n[{author}] >> {escape(story_action)}")
+        if story_action != '':
+            await eplog(loop, f"\n[{author}] >> {escape(story_action)}")
         task = loop.run_in_executor(None, story.act, story_action)
         response = await asyncio.wait_for(task, timeout=120, loop=loop)
         sent = f"{escape(story_action)}\n{escape(response)}"
@@ -342,24 +343,25 @@ def escape(text):
 
 @bot.command(name='you', help='Continues AI Dungeon game', aliases=['next'])
 @is_in_channel()
-async def game_next(ctx, *, text='continue'):
+async def game_next(ctx, *, text=''):
     action = text
-    if action[0] == '!':
-        action = action[1:]
-    elif action[0] == '"' or action[0] == '\'':
-        action = "You say " + action
-    else:
-        action = re.sub("^(?: *you +)*(.+)$", "You \\1", action, flags=re.I)
-        user_speech_regex = re.search(r"^(?: *you +say +)?([\"'].*[\"'])$", action, flags=re.I)
-        user_action_regex = re.search(r"^(?: *you +)(.+)$", action, flags=re.I)
-        if user_speech_regex:
-            action = user_speech_regex.group(1)
+    if action != '':
+        if action[0] == '!':
+            action = action[1:]
+        elif action[0] == '"' or action[0] == '\'':
             action = "You say " + action
-            action = end_sentence(action)
-        elif user_action_regex:
-            action = first_to_second_person(user_action_regex.group(1))
-            action = "You" + action
-            action = end_sentence(action)
+        else:
+            action = re.sub("^(?: *you +)*(.+)$", "You \\1", action, flags=re.I)
+            user_speech_regex = re.search(r"^(?: *you +say +)?([\"'].*[\"'])$", action, flags=re.I)
+            user_action_regex = re.search(r"^(?: *you +)(.+)$", action, flags=re.I)
+            if user_speech_regex:
+                action = user_speech_regex.group(1)
+                action = "You say " + action
+                action = end_sentence(action)
+            elif user_action_regex:
+                action = first_to_second_person(user_action_regex.group(1))
+                action = "You" + action
+                action = end_sentence(action)
     message = {'channel': ctx.channel.id, 'action': '__NEXT__', 'story_action': action, 'author_name': ctx.message.author.display_name}
     await queue.put(json.dumps(message))
 
