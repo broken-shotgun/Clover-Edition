@@ -5,7 +5,7 @@ class CogServTTS:
         self.region = "eastus"
         self.deployment_id = "a9b14cd6-8117-45df-9343-952e42d2604f"
         self.voice_lang = "en-US"
-        self.voiuce_gender = "Female"
+        self.voice_gender = "Female"
         self.voice_name = "Oprah200"
         self.endpoint_url = f"https://{self.region}.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId={self.deployment_id}"
         self.subscription_key = subscription_key
@@ -28,7 +28,7 @@ class CogServTTS:
     '''
     Generates TTS for message and saves to given filename in the tmp folder.
     '''
-    def save_audio(self, message, filename='sample'):
+    def synthesize_speech(self, message):
         if not self.is_token_valid():
             self.get_token()
         headers = {
@@ -38,21 +38,23 @@ class CogServTTS:
             'User-Agent': 'K9000'
         }
         body = f"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xml:lang=\"{self.voice_lang}\">" \
-            f"<voice xml:lang=\"{self.voice_lang}\" xml:gender=\"{self.voiuce_gender}\" name=\"{self.voice_name}\">" \
+            f"<voice xml:lang=\"{self.voice_lang}\" xml:gender=\"{self.voice_gender}\" name=\"{self.voice_name}\">" \
             f"{message}" \
             "</voice>" \
             "</speak>"
         try:
-            response = requests.post(self.endpoint_url, headers=headers, data=body.encode('utf-8'), timeout=15)
-            if response.status_code == 200:
-                with open(f'tmp/{filename}.wav', 'wb') as audio:
-                    audio.write(response.content)
-                print("Successfully saved TTS response.")
-            else:
-                print("\nStatus code: " + str(response.status_code) + "\nSomething went wrong. Check your subscription key and headers.\n")
+            return requests.post(self.endpoint_url, headers=headers, data=body.encode('utf-8'), timeout=15)
         except requests.exceptions.Timeout:
             print("Error: CogTTS request timed out.")
 
+
 if __name__ == '__main__':
     tts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
-    tts.save_audio("You are Aragorn. You have a long sword, and a bow and arrows. You are protecting four hobbits. One of them has the Ring of Power. Your mission is to lead the hobbits to Rivendell where they will be safe. Rivendell is a month away, through rough wilderness. You are being hunted by nine Nazgul who want to steal the ring of power and kill you. The Nazgul are men cloacked in black, with long black swords. They are dangerous foes. You have just begun your journey and", "oprahTest")
+    response = tts.synthesize_speech(
+        "You are Aragorn. You have a long sword, and a bow and arrows. You are protecting four hobbits. One of them has the Ring of Power." \
+        "Your mission is to lead the hobbits to Rivendell where they will be safe. Rivendell is a month away, through rough wilderness." \
+        "You are being hunted by nine Nazgul who want to steal the ring of power and kill you. The Nazgul are men cloacked in black, with long black swords." \
+        "They are dangerous foes. You have just begun your journey and"
+    )
+    with open('tmp/ttsTest.wav', 'wb') as audio:
+        audio.write(response.content)
