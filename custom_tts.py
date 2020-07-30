@@ -1,4 +1,4 @@
-import datetime, os, requests
+import asyncio, datetime, os, requests
 
 class CogServTTS:
     def __init__(self, subscription_key):
@@ -12,7 +12,7 @@ class CogServTTS:
         self.access_token = ''
         self.token_expiration = datetime.datetime.fromtimestamp(0)
 
-    def get_token(self):
+    async def get_token(self):
         fetch_token_url = f'https://{self.region}.api.cognitive.microsoft.com/sts/v1.0/issueToken'
         headers = {
             'Ocp-Apim-Subscription-Key': self.subscription_key
@@ -28,9 +28,9 @@ class CogServTTS:
     '''
     Generates TTS for message and saves to given filename in the tmp folder.
     '''
-    def synthesize_speech(self, message):
+    async def synthesize_speech(self, message):
         if not self.is_token_valid():
-            self.get_token()
+            await self.get_token()
         headers = {
             'Authorization': 'Bearer ' + self.access_token,
             'Content-Type': 'application/ssml+xml',
@@ -50,11 +50,12 @@ class CogServTTS:
 
 if __name__ == '__main__':
     tts = CogServTTS(os.getenv('MS_COG_SERV_SUB_KEY'))
-    response = tts.synthesize_speech(
+    response = asyncio.get_event_loop().run_until_complete(tts.synthesize_speech(
         "You are Aragorn. You have a long sword, and a bow and arrows. You are protecting four hobbits. One of them has the Ring of Power." \
         "Your mission is to lead the hobbits to Rivendell where they will be safe. Rivendell is a month away, through rough wilderness." \
         "You are being hunted by nine Nazgul who want to steal the ring of power and kill you. The Nazgul are men cloacked in black, with long black swords." \
-        "They are dangerous foes. You have just begun your journey and"
-    )
+        "They are dangerous foes. You have just begun your journey and already you have forgotten something."
+    ))
     with open('tmp/ttsTest.wav', 'wb') as audio:
         audio.write(response.content)
+    print("Success!")

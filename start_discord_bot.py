@@ -286,7 +286,7 @@ cogtts_speed = 1.1
 async def bot_read_message_v2(loop, voice_client, message):
     if voice_client and voice_client.is_connected():
         try:
-            response = cogtts.synthesize_speech(message)
+            response = await cogtts.synthesize_speech(message)
             if response and response.status_code == 200:
                 audio_filename = 'tmp/sample.wav'
                 tts_task = loop.run_in_executor(None, save_audio, response.content, audio_filename)
