@@ -4,3 +4,4 @@ transformers==2.3.0
 discord-py[voice]
 google-cloud-texttospeech
 azure-cognitiveservices-speech
+python-slugify

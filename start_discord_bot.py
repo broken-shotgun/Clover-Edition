@@ -14,6 +14,8 @@ import discord
 from discord.ext import commands
 from google.cloud import texttospeech
 
+from slugify import slugify
+
 # bot setup
 bot = commands.Bot(command_prefix='!')
 ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
@@ -555,6 +557,9 @@ def update_stats():
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def track_whoami(ctx, *, character):
+    global story
+    if story:
+        story.savefile = slugify(character)
     update_who_task = ctx.bot.loop.run_in_executor(None, update_whoami, character)
     await asyncio.wait_for(update_who_task, timeout=5, loop=ctx.bot.loop)
     update_list_task = ctx.bot.loop.run_in_executor(None, update_character_list, character)
