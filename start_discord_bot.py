@@ -283,13 +283,13 @@ import azure.cognitiveservices.speech as speechsdk
 speech_key, custom_endpoint = os.getenv('MS_COG_SERV_SUB_KEY'), "https://eastus.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId=a9b14cd6-8117-45df-9343-952e42d2604f"
 speech_config = speechsdk.SpeechConfig(subscription=speech_key, endpoint=custom_endpoint)
 speech_config.speech_synthesis_voice_name = "Oprah200"
-audio_filename = "tmp/tts.wav"
-audio_output = speechsdk.audio.AudioOutputConfig(filename=audio_filename)
-speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_output)
 cogtts_volume = 7.5
 cogtts_speed = 1.1
 async def bot_read_message_v2(loop, voice_client, message):
     if voice_client and voice_client.is_connected():
+        audio_filename = "tmp/tts.wav"
+        audio_output = speechsdk.audio.AudioOutputConfig(filename=audio_filename)
+        speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_output)
         result = speech_synthesizer.speak_text_async(message).get()
         if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
             print("Speech synthesized to [{}]".format(audio_filename))
@@ -305,6 +305,8 @@ async def bot_read_message_v2(loop, voice_client, message):
                 if cancellation_details.error_details:
                     print("Error details: {}".format(cancellation_details.error_details))
             print("Did you update the subscription info?")
+        del result
+        del speech_synthesizer
 
 
 def save_audio(content, filename):
