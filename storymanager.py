@@ -80,6 +80,9 @@ class Story:
         self.actions = self.actions[:-1]
         self.results = self.results[:-1]
 
+    def alter(self, new_result):
+        self.results[-1] = new_result
+
     def get_suggestion(self):
         return re.sub('\n.*', '',
                       self.generator.generate_raw(

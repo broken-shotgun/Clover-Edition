@@ -13,6 +13,7 @@ from utils import *
 import discord
 from discord.ext import commands
 from google.cloud import texttospeech
+import azure.cognitiveservices.speech as speechsdk
 
 from slugify import slugify
 
@@ -88,6 +89,8 @@ async def on_ready():
                     await handle_play_sfx(args['sfx_key'])
                 elif action == "__REVERT__":
                     await handle_revert(loop, ai_channel)
+                elif action == "__ALTER__":
+                    await handle_alter(loop, ai_channel, args['altered_response'])
                 elif action == "__NEW_GAME__":
                     await handle_newgame(loop, ai_channel, args['context'])
                 elif action == "__LOAD_GAME__":
@@ -181,6 +184,18 @@ async def handle_revert(loop, channel):
         new_last_action = story.results[-1] if len(story.results) > 0 else story.context
         await eplog(loop, f"\n\n>> Reverted to: {new_last_action}")
         await channel.send(f"Last action reverted.\n{new_last_action}")
+
+
+async def handle_alter(loop, channel, altered_response):
+    global story
+    if len(story.results) == 0:
+        await channel.send("No results to alter.")
+    elif len(altered_response.strip()) == 0:
+        await channel.send("Error: please provide text to alter previous result.")
+    else:
+        story.alter(altered_response)
+        await eplog(loop, f"\n\n>> Altered previous response to: {altered_response}")
+        await channel.send("Last result altered.")
 
 
 async def handle_remember(loop, channel, memory):
@@ -281,7 +296,6 @@ async def bot_read_message(voice_client, message):
 '''
 Uses Microsoft Cognition Services TTS.
 '''
-import azure.cognitiveservices.speech as speechsdk
 speech_key, custom_endpoint = os.getenv('MS_COG_SERV_SUB_KEY'), "https://eastus.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId=a9b14cd6-8117-45df-9343-952e42d2604f"
 speech_config = speechsdk.SpeechConfig(subscription=speech_key, endpoint=custom_endpoint)
 speech_config.speech_synthesis_voice_name = "Oprah200"
@@ -427,6 +441,13 @@ async def game_forget(ctx):
 @is_in_channel()
 async def game_revert(ctx):
     message = {'channel': ctx.channel.id, 'action': '__REVERT__'}
+    await queue.put(json.dumps(message))
+
+
+@bot.command(name='alter', help='Alters the previous result')
+@is_in_channel()
+async def game_alter(ctx, *, altered_response):
+    message = {'channel': ctx.channel.id, 'action': '__ALTER__', 'altered_response': altered_response}
     await queue.put(json.dumps(message))
 
 
