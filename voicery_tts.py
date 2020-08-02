@@ -5,10 +5,22 @@ class VoiceryTTS:
         self.api_key = api_key
         self.generate_url = "https://api.voicery.com/generate"
 
-    '''
-    Generates TTS for message.
-    '''
     async def generate(self, message, speaker="katie", style="narration", encoding="wav"):
+        '''
+        Generates TTS for message.
+
+        Keyword arguments:
+
+        message -- the text or SSML to synthesize (required)
+
+        speaker -- https://www.voicery.com/docs#available-speakers (default 'katie')
+        
+        style -- Only applies to speakers Katie and Steven.
+        Available styles (katie): conversational, narration, happy, sad, scared, angry, flirty, flustered, whispering (default 'narration')
+        Available styles (steven): narration, conversational, happy, sad, scared, angry, flirty, flustered, whispering, commercial, new yorker, robot
+        
+        encoding -- mp3, wav, pcm (default 'wav')
+        '''
         headers = {
             'Authorization': 'Bearer ' + self.api_key,
             'Content-Type': 'application/json; version=1'

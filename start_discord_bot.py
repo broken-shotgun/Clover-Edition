@@ -277,6 +277,9 @@ async def eplog(loop, message):
 
 
 async def bot_read_message(voice_client, message):
+    '''
+    Uses Google Cloud TTS.
+    '''
     if voice_client and voice_client.is_connected():
         synthesis_input = texttospeech.types.SynthesisInput(text=message)
         voice = texttospeech.types.VoiceSelectionParams(
@@ -293,15 +296,15 @@ async def bot_read_message(voice_client, message):
         voice_client.stop()
 
 
-'''
-Uses Microsoft Cognition Services TTS.
-'''
 speech_key, custom_endpoint = os.getenv('MS_COG_SERV_SUB_KEY'), "https://eastus.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId=a9b14cd6-8117-45df-9343-952e42d2604f"
 speech_config = speechsdk.SpeechConfig(subscription=speech_key, endpoint=custom_endpoint)
 speech_config.speech_synthesis_voice_name = "Oprah200"
 cogtts_volume = 7.5
 cogtts_speed = 1.1
 async def bot_read_message_v2(loop, voice_client, message):
+    '''
+    Uses Microsoft Cognition Services TTS.
+    '''
     if voice_client and voice_client.is_connected():
         audio_filename = "tmp/tts.wav"
         audio_output = speechsdk.audio.AudioOutputConfig(filename=audio_filename)
