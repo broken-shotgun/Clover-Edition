@@ -17,6 +17,8 @@ import azure.cognitiveservices.speech as speechsdk
 
 from slugify import slugify
 
+import requests
+
 # bot setup
 bot = commands.Bot(command_prefix='!')
 ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
@@ -312,11 +314,14 @@ async def bot_read_message_v2(loop, voice_client, message):
         result = speech_synthesizer.speak_text_async(message).get()
         if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
             print("Speech synthesized to [{}]".format(audio_filename))
-            clip = discord.FFmpegPCMAudio(audio_filename, options=f'-filter:a "volume={cogtts_volume}dB,atempo={cogtts_speed}"')
+            ffmpeg_options = f'-filter:a "volume={cogtts_volume}dB,atempo={cogtts_speed}"'
+            clip = discord.FFmpegPCMAudio(audio_filename, options=ffmpeg_options)
+            #await animate_play()
             voice_client.play(clip)
             while voice_client.is_playing():
                 await asyncio.sleep(1)
             voice_client.stop()
+            #await animate_stop()
         elif result.reason == speechsdk.ResultReason.Canceled:
             cancellation_details = result.cancellation_details
             print("Speech synthesis canceled: {}".format(cancellation_details.reason))
@@ -326,6 +331,14 @@ async def bot_read_message_v2(loop, voice_client, message):
             print("Did you update the subscription info?")
         del result
         del speech_synthesizer
+
+
+async def animate_play():
+    requests.get("http://localhost:3000/play")
+
+
+async def animate_stop():
+    requests.get("http://localhost:3000/stop")
 
 
 def save_audio(content, filename):
