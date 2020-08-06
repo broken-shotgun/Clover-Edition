@@ -155,7 +155,7 @@ async def handle_next(loop, channel, author, story_action):
         await eplog(loop, story.context)
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
-                await bot_read_message_v3(loop, voice_client, story.context)
+                await bot_read_message_v2(loop, voice_client, story.context)
             else:
                 await bot_read_message(voice_client, story.context)
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
@@ -168,7 +168,7 @@ async def handle_next(loop, channel, author, story_action):
         # handle tts if in a voice channel
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
-                await bot_read_message_v3(loop, voice_client, sent)
+                await bot_read_message_v2(loop, voice_client, sent)
             else:
                 await bot_read_message(voice_client, sent)
         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
@@ -229,10 +229,10 @@ async def handle_loadgame(loop, channel, save_game_id):
         if last_prompt and len(last_prompt) > 0:
             game_load_message = game_load_message + f"\n{last_prompt}"
         if last_result and len(last_result) > 0:
-            game_load_message = game_load_message + f"\n{last_result}"
+            game_load_message = game_load_message + f"\n{escape(last_result)}"
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
-                await bot_read_message_v3(loop, voice_client, game_load_message)
+                await bot_read_message_v2(loop, voice_client, game_load_message)
             else:
                 await bot_read_message(voice_client, game_load_message)
         await eplog(loop, f"\n>> {game_load_message}")
@@ -302,39 +302,7 @@ async def bot_read_message(voice_client, message):
 speech_key, custom_endpoint = os.getenv('MS_COG_SERV_SUB_KEY'), "https://eastus.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId=a9b14cd6-8117-45df-9343-952e42d2604f"
 speech_config = speechsdk.SpeechConfig(subscription=speech_key, endpoint=custom_endpoint)
 speech_config.speech_synthesis_voice_name = "Oprah200"
-cogtts_volume = 7.5
-cogtts_speed = 1.1
 async def bot_read_message_v2(loop, voice_client, message):
-    '''
-    Uses Microsoft Cognition Services TTS using FFmpegPCMAudio (slow, uses file io, but able to tweak volume and speech rate)
-    '''
-    if voice_client and voice_client.is_connected():
-        audio_filename = "tmp/tts.wav"
-        audio_output = speechsdk.audio.AudioOutputConfig(filename=audio_filename)
-        speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_output)
-        result = speech_synthesizer.speak_text_async(message).get()
-        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            print("Speech synthesized to [{}]".format(audio_filename))
-            ffmpeg_options = f'-filter:a "volume={cogtts_volume}dB,atempo={cogtts_speed}"'
-            clip = discord.FFmpegPCMAudio(audio_filename, options=ffmpeg_options)
-            #await animate_play()
-            voice_client.play(clip)
-            while voice_client.is_playing():
-                await asyncio.sleep(1)
-            voice_client.stop()
-            #await animate_stop()
-        elif result.reason == speechsdk.ResultReason.Canceled:
-            cancellation_details = result.cancellation_details
-            print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-            if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                if cancellation_details.error_details:
-                    print("Error details: {}".format(cancellation_details.error_details))
-            print("Did you update the subscription info?")
-        del result
-        del speech_synthesizer
-
-
-async def bot_read_message_v3(loop, voice_client, message):
     '''
     Uses Microsoft Cognition Services TTS using AudioDataStream (fast, resample & pass bytes directly)
     '''
@@ -342,7 +310,6 @@ async def bot_read_message_v3(loop, voice_client, message):
         speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
         result = speech_synthesizer.speak_text_async(message).get()
         if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            print("Speech synthesized to stream")
             audio_data_stream = speechsdk.AudioDataStream(result)
             audio_data_stream.position = 0
 
@@ -374,8 +341,6 @@ async def bot_read_message_v3(loop, voice_client, message):
                 if cancellation_details.error_details:
                     print("Error details: {}".format(cancellation_details.error_details))
             print("Did you update the subscription info?")
-        #del result
-        #del speech_synthesizer
 
 
 async def animate_play():
@@ -384,11 +349,6 @@ async def animate_play():
 
 async def animate_stop():
     requests.get("http://localhost:3000/stop")
-
-
-def save_audio(content, filename):
-    with open(filename, 'wb') as audio:
-        audio.write(content)
 
 
 async def bot_play_audio(voice_client, filename):
@@ -423,8 +383,7 @@ def is_in_channel():
 
 
 def escape(text):
-    text = re.sub(r'\\(\*|_|`|~|\\|>)', r'\g<1>', text)
-    return re.sub(r'(\*|_|`|~|\\|>)', r'\\\g<1>', text)
+    return re.sub('[\\`*_<>]', '', text)
 
 
 @bot.command(name='next', help='Continues AI Dungeon game', aliases=['you'])
@@ -582,28 +541,6 @@ async def silence_voice(ctx):
         voice_client.stop()
 
 
-@bot.command(name='volume', help='Changes CogTTS voice volume (does not affect Google WaveNet)')
-@commands.has_role(ADMIN_ROLE)
-@is_in_channel()
-async def set_voice_volume(ctx, amount: typing.Optional[float] = 1.0):
-    global cogtts_volume
-    cogtts_volume = clamp(amount, 0.0, 20.0)
-    await ctx.send(f"> TTS volume set to +{cogtts_volume}dB")
-
-
-@bot.command(name='speed', help='Changes CogTTS voice speed (does not affect Google WaveNet)')
-@commands.has_role(ADMIN_ROLE)
-@is_in_channel()
-async def set_voice_speed(ctx, amount: typing.Optional[float] = 1.0):
-    global cogtts_speed
-    cogtts_speed = clamp(amount, 0.5, 2.0)
-    await ctx.send(f"> TTS playback speed set to {cogtts_speed}")
-
-
-def clamp(n, minn, maxn):
-    return max(min(maxn, n), minn)
-
-
 @bot.command(name='track', help=f'Tracks stat.')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
@@ -657,7 +594,7 @@ def update_whoami(character):
 
 def update_character_list(character):
     with open("tmp/character_list.log", "a", encoding="utf-8") as out:
-        timestamp = datetime.now().strftime("%a %m-%d-%Y %H:%M:%S")
+        timestamp = datetime.now().strftime("%M:%S")
         out.write(f"\n{timestamp} - {character}")
 
 
