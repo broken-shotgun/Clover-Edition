@@ -13,6 +13,7 @@ from utils import *
 import discord
 from discord.ext import commands
 from google.cloud import texttospeech
+import audioop
 import azure.cognitiveservices.speech as speechsdk
 
 from slugify import slugify
@@ -154,7 +155,7 @@ async def handle_next(loop, channel, author, story_action):
         await eplog(loop, story.context)
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
-                await bot_read_message_v2(loop, voice_client, story.context)
+                await bot_read_message_v3(loop, voice_client, story.context)
             else:
                 await bot_read_message(voice_client, story.context)
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
@@ -167,7 +168,7 @@ async def handle_next(loop, channel, author, story_action):
         # handle tts if in a voice channel
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
-                await bot_read_message_v2(loop, voice_client, sent)
+                await bot_read_message_v3(loop, voice_client, sent)
             else:
                 await bot_read_message(voice_client, sent)
         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
@@ -231,7 +232,7 @@ async def handle_loadgame(loop, channel, save_game_id):
             game_load_message = game_load_message + f"\n{last_result}"
         if voice_client and voice_client.is_connected():
             if v2_voice_toggle:
-                await bot_read_message_v2(loop, voice_client, game_load_message)
+                await bot_read_message_v3(loop, voice_client, game_load_message)
             else:
                 await bot_read_message(voice_client, game_load_message)
         await eplog(loop, f"\n>> {game_load_message}")
@@ -305,7 +306,7 @@ cogtts_volume = 7.5
 cogtts_speed = 1.1
 async def bot_read_message_v2(loop, voice_client, message):
     '''
-    Uses Microsoft Cognition Services TTS.
+    Uses Microsoft Cognition Services TTS using FFmpegPCMAudio (slow, uses file io, but able to tweak volume and speech rate)
     '''
     if voice_client and voice_client.is_connected():
         audio_filename = "tmp/tts.wav"
@@ -331,6 +332,50 @@ async def bot_read_message_v2(loop, voice_client, message):
             print("Did you update the subscription info?")
         del result
         del speech_synthesizer
+
+
+async def bot_read_message_v3(loop, voice_client, message):
+    '''
+    Uses Microsoft Cognition Services TTS using AudioDataStream (fast, resample & pass bytes directly)
+    '''
+    if voice_client and voice_client.is_connected():
+        speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
+        result = speech_synthesizer.speak_text_async(message).get()
+        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+            print("Speech synthesized to stream")
+            audio_data_stream = speechsdk.AudioDataStream(result)
+            audio_data_stream.position = 0
+
+            # reads data from the stream & resamples it for discord
+            audio_bytes_stream = io.BytesIO()
+            audio_buffer = bytes(16000)
+            in_sample_rate = 16000
+            out_sample_rate = 96000
+            total_size = 0
+            filled_size = audio_data_stream.read_data(audio_buffer)
+            pcm, state = audioop.ratecv(audio_buffer, 2, 1, in_sample_rate, out_sample_rate, None)
+            audio_bytes_stream.write(pcm)
+            while filled_size > 0:
+                total_size += filled_size
+                filled_size = audio_data_stream.read_data(audio_buffer)
+                pcm, state = audioop.ratecv(audio_buffer, 2, 1, in_sample_rate, out_sample_rate, None)
+                audio_bytes_stream.write(pcm)
+            audio_bytes_stream.seek(0)
+
+            clip = discord.PCMAudio(audio_bytes_stream)
+            voice_client.play(clip)
+            while voice_client.is_playing():
+                await asyncio.sleep(1)
+            voice_client.stop()
+        elif result.reason == speechsdk.ResultReason.Canceled:
+            cancellation_details = result.cancellation_details
+            print("Speech synthesis canceled: {}".format(cancellation_details.reason))
+            if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                if cancellation_details.error_details:
+                    print("Error details: {}".format(cancellation_details.error_details))
+            print("Did you update the subscription info?")
+        #del result
+        #del speech_synthesizer
 
 
 async def animate_play():
