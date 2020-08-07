@@ -308,7 +308,9 @@ async def bot_read_message_v2(loop, voice_client, message):
     '''
     if voice_client and voice_client.is_connected():
         speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
-        result = speech_synthesizer.speak_text_async(message).get()
+        result_future = speech_synthesizer.speak_text_async(message)
+        result_task = loop.run_in_executor(None, result_future.get)
+        result = await asyncio.wait_for(result_task, timeout=15, loop=loop)
         if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
             audio_data_stream = speechsdk.AudioDataStream(result)
             audio_data_stream.position = 0
