@@ -307,42 +307,45 @@ async def bot_read_message_v2(loop, voice_client, message):
     Uses Microsoft Cognition Services TTS using AudioDataStream (fast, resample & pass bytes directly)
     '''
     if voice_client and voice_client.is_connected():
-        speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
-        result_future = speech_synthesizer.speak_text_async(message)
-        result_task = loop.run_in_executor(None, result_future.get)
-        result = await asyncio.wait_for(result_task, timeout=15, loop=loop)
-        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            audio_data_stream = speechsdk.AudioDataStream(result)
-            audio_data_stream.position = 0
+        try:
+            speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
+            result_future = speech_synthesizer.speak_text_async(message)
+            result_task = loop.run_in_executor(None, result_future.get)
+            result = await asyncio.wait_for(result_task, timeout=10, loop=loop)
+            if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+                audio_data_stream = speechsdk.AudioDataStream(result)
+                audio_data_stream.position = 0
 
-            # reads data from the stream & resamples it for discord
-            audio_bytes_stream = io.BytesIO()
-            audio_buffer = bytes(16000)
-            in_sample_rate = 16000
-            out_sample_rate = 96000
-            total_size = 0
-            filled_size = audio_data_stream.read_data(audio_buffer)
-            pcm, state = audioop.ratecv(audio_buffer, 2, 1, in_sample_rate, out_sample_rate, None)
-            audio_bytes_stream.write(pcm)
-            while filled_size > 0:
-                total_size += filled_size
+                # reads data from the stream & resamples it for discord
+                audio_bytes_stream = io.BytesIO()
+                audio_buffer = bytes(16000)
+                in_sample_rate = 16000
+                out_sample_rate = 96000
+                total_size = 0
                 filled_size = audio_data_stream.read_data(audio_buffer)
                 pcm, state = audioop.ratecv(audio_buffer, 2, 1, in_sample_rate, out_sample_rate, None)
                 audio_bytes_stream.write(pcm)
-            audio_bytes_stream.seek(0)
+                while filled_size > 0:
+                    total_size += filled_size
+                    filled_size = audio_data_stream.read_data(audio_buffer)
+                    pcm, state = audioop.ratecv(audio_buffer, 2, 1, in_sample_rate, out_sample_rate, None)
+                    audio_bytes_stream.write(pcm)
+                audio_bytes_stream.seek(0)
 
-            clip = discord.PCMAudio(audio_bytes_stream)
-            voice_client.play(clip)
-            while voice_client.is_playing():
-                await asyncio.sleep(1)
-            voice_client.stop()
-        elif result.reason == speechsdk.ResultReason.Canceled:
-            cancellation_details = result.cancellation_details
-            print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-            if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                if cancellation_details.error_details:
-                    print("Error details: {}".format(cancellation_details.error_details))
-            print("Did you update the subscription info?")
+                clip = discord.PCMAudio(audio_bytes_stream)
+                voice_client.play(clip)
+                while voice_client.is_playing():
+                    await asyncio.sleep(1)
+                voice_client.stop()
+            elif result.reason == speechsdk.ResultReason.Canceled:
+                cancellation_details = result.cancellation_details
+                print("Speech synthesis canceled: {}".format(cancellation_details.reason))
+                if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                    if cancellation_details.error_details:
+                        print("Error details: {}".format(cancellation_details.error_details))
+                print("Did you update the subscription info?")
+        except asyncio.TimeoutError as err:
+            logger.error("TTS Call Timed Out", exc_info=True)
 
 
 async def animate_play():
@@ -388,7 +391,7 @@ def escape(text):
     return re.sub('[\\`*_<>]', '', text)
 
 
-@bot.command(name='next', help='Continues AI Dungeon game', aliases=['you'])
+@bot.command(name='do', help='Continues AI Dungeon game', aliases=['you', 'next'])
 @is_in_channel()
 async def game_next(ctx, *, text=''):
     action = text
@@ -510,7 +513,7 @@ async def game_exit(ctx):
     await queue.put(json.dumps(message))
 
 
-@bot.command(name='join', help='Join the voice channel of the user')
+@bot.command(name='k9-join', help='Join the voice channel of the user')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def join_voice(ctx):
@@ -522,7 +525,7 @@ async def join_voice(ctx):
         await ctx.send("You are not currently in a voice channel")
 
 
-@bot.command(name='leave', help='Join the voice channel of the user')
+@bot.command(name='k9-leave', help='Join the voice channel of the user')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
 async def leave_voice(ctx):
