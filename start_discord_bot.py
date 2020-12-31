@@ -271,7 +271,7 @@ async def handle_exit(channel):
     if voice_client and voice_client.is_connected():
         await voice_client.disconnect()
     await channel.send("Exiting game...")
-    exit(0)
+    await bot.close()
 
 
 async def eplog(loop, message):
@@ -631,3 +631,4 @@ async def on_command_error(ctx, error):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     bot.run(DISCORD_TOKEN)
+    exit(1)
