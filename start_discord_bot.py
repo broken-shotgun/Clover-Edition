@@ -159,7 +159,7 @@ async def handle_next(loop, channel, author, story_action):
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
         if story_action != '':
-            await eplog(loop, f"\n[{author}] >> {story_action}")
+            await eplog(loop, f"\n{author}: {story_action}")
         task = loop.run_in_executor(None, story.act, story_action)
         response = await asyncio.wait_for(task, timeout=120, loop=loop)
         sent = f"{story_action}\n{escape(response)}"
@@ -615,7 +615,6 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.CommandNotFound): return
     logger.error(error, exc_info=True)
     logger.error(f'Ignoring exception in command: {ctx.command}')
-    # TODO handle errors
 
 
 if __name__ == '__main__':

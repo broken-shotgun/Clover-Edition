@@ -8,7 +8,7 @@ authors = ["Jason Petterson <jp@brokenshotgun.com>"]
 python = "^3.7"
 profanityfilter = "^2.0.6"
 numpy = "1.19.3"
-torch = "^1.7.1"
+torch = {url = "https://download.pytorch.org/whl/cu102/torch-1.8.1%2Bcu102-cp37-cp37m-win_amd64.whl"}
 transformers = "^2.3.0"
 "discord.py" = {extras = ["voice"], version = "^1.5.1"}
 google-cloud-texttospeech = "^2.2.0"
