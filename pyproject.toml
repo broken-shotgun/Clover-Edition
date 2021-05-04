@@ -7,6 +7,7 @@ authors = ["Jason Petterson <jp@brokenshotgun.com>"]
 [tool.poetry.dependencies]
 python = "^3.7"
 profanityfilter = "^2.0.6"
+numpy = "1.19.3"
 torch = "^1.7.1"
 transformers = "^2.3.0"
 "discord.py" = {extras = ["voice"], version = "^1.5.1"}

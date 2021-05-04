@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import asyncio, io, json, logging, os, random, re, sys, time, typing, uuid
+import asyncio, io, json, logging, os, re, typing, uuid
 from datetime import datetime
 from logging.handlers import SysLogHandler
 
@@ -17,8 +17,6 @@ import audioop
 import azure.cognitiveservices.speech as speechsdk
 
 from slugify import slugify
-
-import requests
 
 # bot setup
 bot = commands.Bot(command_prefix='!')
@@ -346,14 +344,6 @@ async def bot_read_message_v2(loop, voice_client, message):
                 print("Did you update the subscription info?")
         except asyncio.TimeoutError as err:
             logger.error("TTS Call Timed Out", exc_info=True)
-
-
-async def animate_play():
-    requests.get("http://localhost:3000/play")
-
-
-async def animate_stop():
-    requests.get("http://localhost:3000/stop")
 
 
 async def bot_play_audio(voice_client, filename):

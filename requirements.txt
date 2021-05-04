@@ -1,4 +1,5 @@
 profanityfilter
+numpy==1.19.3
 torch
 transformers==2.3.0
 discord-py[voice]
