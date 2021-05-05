@@ -4,7 +4,6 @@ from datetime import datetime
 from logging.handlers import SysLogHandler
 
 from getconfig import settings
-from gpt2generator import GPT2Generator
 from pathlib import Path
 from play import get_generator, save_story, load_story
 from storymanager import Story
@@ -36,7 +35,7 @@ syslog = SysLogHandler(address=(log_host, int(log_port)))
 log_format = '%(asctime)s local dungeon_worker: %(message)s'
 log_formatter = logging.Formatter(log_format, datefmt='%b %d %H:%M:%S')
 syslog.setFormatter(log_formatter)
-logger = logging.getLogger()
+logger = logging.getLogger('system')
 logger.addHandler(syslog)
 logger.setLevel(logging.INFO)
 
@@ -79,7 +78,7 @@ async def on_ready():
         # poll queue for messages, block here if empty
         msg = None
         while not msg: msg = await queue.get()
-        logger.info(f'Processing message: {msg}') 
+        # logger.info(f'Processing message: {msg}') 
         args = json.loads(msg)
         channel_id, action = args['channel'], args['action']
         channel = bot.get_channel(channel_id)
@@ -123,7 +122,7 @@ async def on_ready():
 @bot.event
 async def on_disconnect():
     global story
-    logger.info("Disconnected from Discord")
+    logger.warning("Disconnected from Discord")
     backup_savefile = story.savefile
     save_story(story, file_override="backup/disconnect_protect")
     story.savefile = backup_savefile
@@ -404,7 +403,7 @@ async def game_next(ctx, *, text=''):
         elif action[0] == '"' or action[0] == '\'':
             action = "You say " + action
         else:
-            action = re.sub("^(?: *you +)*(.+)$", "You \\1", action, flags=re.I)
+            action = re.sub(r"^(?: *you +)*(.+)$", "You \\1", action, flags=re.I)
             user_speech_regex = re.search(r"^(?: *you +say +)?([\"'].*[\"'])$", action, flags=re.I)
             user_action_regex = re.search(r"^(?: *you +)(.+)$", action, flags=re.I)
             if user_speech_regex:

@@ -1,4 +1,4 @@
-# AIDungeon2
+# AI Dungeon 2
 
 ## Clover Edition
 
@@ -110,6 +110,8 @@ Once downloaded your model folder should look like this:
 
 #### Discord Bot (optional)
 
+------------------------
+
 A Discord Bot has been added, to run, you'll need to do some additonal setup.
 
 First make sure you install optional requirements, run:
@@ -134,13 +136,26 @@ discord-bot-channel = general
 
 To start the Dicord Bot, just enter the folder and run `start_discord_bot.py` with python3.
 
-##### Text to Speech (even more optional)
+#### Text to Speech (even more optional)
+
+------------------------
 
 The Discord Bot is setup to use Google WaveNet text-to-speech voices to read back responses.
 
 To setup WaveNet voices for Text to Speech, we'll need to setup Google Cloud Platform.
 
 Follow the [Quickstart guide](https://cloud.google.com/text-to-speech/docs/quickstart-client-libraries#client-libraries-install-python) and make sure to set the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to location of JSON file with credentials on your machine.
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS="<path_to_crednetials_json>"
+```
+
+Or for even more voices, support is available for [Microsoft Speech Studio](https://speech.microsoft.com/)
+
+```bash
+MS_COG_SERV_ENDPOINT_URL="custom_endpoint_url"
+MS_COG_SERV_SUB_KEY="subscription_key"
+```
 
 #### Play
 
