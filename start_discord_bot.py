@@ -47,7 +47,7 @@ queue = asyncio.Queue()
 # TTS setup
 client = texttospeech.TextToSpeechClient()
 voice_client = None
-v2_voice_toggle = True
+tts_voice_key = "Oprah200"
 
 # stat tracker setup
 stats = {
@@ -79,33 +79,34 @@ async def on_ready():
         # poll queue for messages, block here if empty
         msg = None
         while not msg: msg = await queue.get()
-        logger.info(f'Processing message: {msg}'); args = json.loads(msg)
-        channel, action = args['channel'], args['action']
-        ai_channel = bot.get_channel(channel)
+        logger.info(f'Processing message: {msg}') 
+        args = json.loads(msg)
+        channel_id, action = args['channel'], args['action']
+        channel = bot.get_channel(channel_id)
         try:
-            async with ai_channel.typing():
+            async with channel.typing():
                 if action == "__NEXT__":
-                    await handle_next(loop, ai_channel, args['author_name'], args['story_action'])
+                    await handle_next(loop, channel, args['author_name'], args['story_action'])
                 elif action == "__PLAY_SFX__":
                     await handle_play_sfx(args['sfx_key'])
                 elif action == "__REVERT__":
-                    await handle_revert(loop, ai_channel)
+                    await handle_revert(loop, channel)
                 elif action == "__ALTER__":
-                    await handle_alter(loop, ai_channel, args['altered_response'])
+                    await handle_alter(loop, channel, args['altered_response'])
                 elif action == "__NEW_GAME__":
-                    await handle_newgame(loop, ai_channel, args['context'])
+                    await handle_newgame(loop, channel, args['context'])
                 elif action == "__LOAD_GAME__":
-                    await handle_loadgame(loop, ai_channel, args['save_game_id'])
+                    await handle_loadgame(loop, channel, args['save_game_id'])
                 elif action == "__SAVE_GAME__":
-                    await handle_savegame(loop, ai_channel, args['override_save_game_id'])
+                    await handle_savegame(loop, channel, args['override_save_game_id'])
                 elif action == "__REMEMBER__":
-                    await handle_remember(loop, ai_channel, args['memory'])
+                    await handle_remember(loop, channel, args['memory'])
                 elif action == "__FORGET__":
-                    await handle_forget(loop, ai_channel)
+                    await handle_forget(loop, channel)
                 elif action == "__TOGGLE_CENSOR__":
-                    await handle_censor(ai_channel, args['censor'])
+                    await handle_censor(channel, args['censor'])
                 elif action == "__EXIT__": 
-                    await handle_exit(ai_channel)
+                    await handle_exit(channel)
                 else:
                     logger.warning(f"Ignoring unknown action sent {action}")
         except Exception as err:
@@ -152,10 +153,10 @@ async def handle_next(loop, channel, author, story_action):
         story.context = story_action
         await eplog(loop, story.context)
         if voice_client and voice_client.is_connected():
-            if v2_voice_toggle:
-                await bot_read_message_v2(loop, voice_client, story.context)
+            if is_microsoft_voice(tts_voice_key):
+                await microsoft_tts_message(loop, voice_client, story.context)
             else:
-                await bot_read_message(voice_client, story.context)
+                await google_tts_message(voice_client, story.context)
         await channel.send(f"Context set!\nProvide initial prompt with !next (Ex. {EXAMPLE_PROMPT})")
     else:
         if story_action != '':
@@ -165,10 +166,10 @@ async def handle_next(loop, channel, author, story_action):
         sent = f"{story_action}\n{escape(response)}"
         # handle tts if in a voice channel
         if voice_client and voice_client.is_connected():
-            if v2_voice_toggle:
-                await bot_read_message_v2(loop, voice_client, sent)
+            if is_microsoft_voice(tts_voice_key):
+                await microsoft_tts_message(loop, voice_client, sent)
             else:
-                await bot_read_message(voice_client, sent)
+                await google_tts_message(voice_client, sent)
         # Note: ai_channel.send(sent, tts=True) is much easier than custom TTS, 
         # but it always appends "Bot says..." which gets annoying real fast and 
         # the voice isn't configurable
@@ -229,10 +230,10 @@ async def handle_loadgame(loop, channel, save_game_id):
         if last_result and len(last_result) > 0:
             game_load_message = game_load_message + f"\n{escape(last_result)}"
         if voice_client and voice_client.is_connected():
-            if v2_voice_toggle:
-                await bot_read_message_v2(loop, voice_client, game_load_message)
+            if is_microsoft_voice(tts_voice_key):
+                await microsoft_tts_message(loop, voice_client, game_load_message)
             else:
-                await bot_read_message(voice_client, game_load_message)
+                await google_tts_message(voice_client, game_load_message)
         await eplog(loop, f"\n>> {game_load_message}")
         await channel.send(f"> {game_load_message}")
     except FileNotFoundError:
@@ -277,35 +278,47 @@ async def eplog(loop, message):
     await asyncio.wait_for(eplog_task, timeout=5, loop=loop)
 
 
-async def bot_read_message(voice_client, message):
+async def google_tts_message(voice_client, message):
     '''
     Uses Google Cloud TTS.
     '''
     if voice_client and voice_client.is_connected():
-        synthesis_input = texttospeech.types.SynthesisInput(text=message)
-        voice = texttospeech.types.VoiceSelectionParams(
-            language_code='en-US', # required, options: 'en-US', 'en-IN', 'en-GB', 'en-AU', 'de-DE'
-            name='en-US-Wavenet-F', # optional, options: https://cloud.google.com/text-to-speech/docs/voices, 'en-US-Wavenet-C', 'en-AU-Wavenet-C', 'en-GB-Wavenet-A', 'en-IN-Wavenet-A', 'de-DE-Wavenet-F'
-            ssml_gender=texttospeech.enums.SsmlVoiceGender.FEMALE)
-        audio_config = texttospeech.types.AudioConfig(
-            audio_encoding=texttospeech.enums.AudioEncoding.LINEAR16,
-            sample_rate_hertz=96000)
-        response = client.synthesize_speech(synthesis_input, voice, audio_config)
+        synthesis_input = texttospeech.SynthesisInput(text=message)
+        lang_code = "en-US" # default lang code
+        lang_code_search = re.search(r"^(\w+-\w+)", tts_voice_key)
+        if lang_code_search:
+            lang_code = lang_code_search.group(1)
+        voice = texttospeech.VoiceSelectionParams(
+            language_code=lang_code,
+            name=tts_voice_key
+        )
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+            sample_rate_hertz=96000
+        )
+        response = client.synthesize_speech(
+            input=synthesis_input, 
+            voice=voice, 
+            audio_config=audio_config
+        )
         voice_client.play(discord.PCMAudio(io.BytesIO(response.audio_content)))
         while voice_client.is_playing():
             await asyncio.sleep(1)
         voice_client.stop()
 
 
-speech_key, custom_endpoint = os.getenv('MS_COG_SERV_SUB_KEY'), "https://eastus.voice.speech.microsoft.com/cognitiveservices/v1?deploymentId=a9b14cd6-8117-45df-9343-952e42d2604f"
-speech_config = speechsdk.SpeechConfig(subscription=speech_key, endpoint=custom_endpoint)
-speech_config.speech_synthesis_voice_name = "Oprah200"
-async def bot_read_message_v2(loop, voice_client, message):
+speech_key, custom_endpoint = os.getenv('MS_COG_SERV_SUB_KEY'), os.getenv('MS_COG_SERV_ENDPOINT_URL')
+async def microsoft_tts_message(loop, voice_client, message):
     '''
     Uses Microsoft Cognition Services TTS using AudioDataStream (fast, resample & pass bytes directly)
     '''
     if voice_client and voice_client.is_connected():
         try:
+            if tts_voice_key == "Oprah200":
+                speech_config = speechsdk.SpeechConfig(subscription=speech_key, endpoint=custom_endpoint)
+            else:
+                speech_config = speechsdk.SpeechConfig(subscription=speech_key, region='eastus') # depends on MS_COG_SERV_ENDPOINT_URL
+            speech_config.speech_synthesis_voice_name = tts_voice_key
             speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
             result_future = speech_synthesizer.speak_text_async(message)
             result_task = loop.run_in_executor(None, result_future.get)
@@ -601,13 +614,149 @@ async def toggle_censor(ctx, state='on'):
     await queue.put(json.dumps(message))
 
 
-@bot.command(name='toggle_v2_voice', help='Toggles between Google TTS and Microsoft TTS')
+@bot.command(name='set_voice', help='Change active TTS voice')
 @commands.has_role(ADMIN_ROLE)
 @is_in_channel()
-async def toggle_v2_voice(ctx):
-    global v2_voice_toggle
-    v2_voice_toggle = not v2_voice_toggle
-    await ctx.send("Using Microsoft Oprah voice" if v2_voice_toggle else "Using Google Female Voice")
+async def set_voice(ctx, voice_key):
+    global tts_voice_key
+    if is_valid_voice_key(voice_key):
+        tts_voice_key = voice_key
+        await ctx.send(f"Voice changed to: {voice_key}")
+    else:
+        await ctx.send("Invalid voice key. (Use !list_voices for valid voices)")
+
+
+@bot.command(name='list_voices', help='List all available TTS voices')
+@commands.has_role(ADMIN_ROLE)
+@is_in_channel()
+async def list_voices(ctx):
+    await ctx.send(f"Voices = {', '.join(valid_voices)}")
+
+
+valid_voices = [
+    "Oprah200", 
+    "da-DK-Wavenet-A",
+    "da-DK-Wavenet-C",
+    "da-DK-Wavenet-D",
+    "da-DK-Wavenet-E",
+    "nl-NL-Wavenet-A",
+    "nl-NL-Wavenet-B",
+    "nl-NL-Wavenet-C",
+    "nl-NL-Wavenet-D",
+    "nl-NL-Wavenet-E",
+    "fil-PH-Wavenet-A",
+    "fil-PH-Wavenet-B",
+    "fil-PH-Wavenet-C",
+    "fil-PH-Wavenet-D",
+    "fi-FI-Wavenet-A",
+    "fr-FR-Wavenet-A",
+    "fr-FR-Wavenet-B",
+    "fr-FR-Wavenet-C",
+    "fr-FR-Wavenet-D",
+    "fr-FR-Wavenet-E",
+    "fr-CA-Wavenet-A",
+    "fr-CA-Wavenet-B",
+    "fr-CA-Wavenet-C",
+    "fr-CA-Wavenet-D",
+    "de-DE-Wavenet-A",
+    "de-DE-Wavenet-B",
+    "de-DE-Wavenet-C",
+    "de-DE-Wavenet-D",
+    "de-DE-Wavenet-E",
+    "de-DE-Wavenet-F",
+    "el-GR-Wavenet-A",   
+    "it-IT-Wavenet-A",
+    "it-IT-Wavenet-B",
+    "it-IT-Wavenet-C",
+    "it-IT-Wavenet-D", 
+    "ja-JP-Wavenet-A",
+    "ja-JP-Wavenet-B",
+    "ja-JP-Wavenet-C",
+    "ja-JP-Wavenet-D", 
+    "ko-KR-Wavenet-A",
+    "ko-KR-Wavenet-B",
+    "ko-KR-Wavenet-C",
+    "ko-KR-Wavenet-D",
+    "cmn-CN-Wavenet-A",
+    "cmn-CN-Wavenet-B",
+    "cmn-CN-Wavenet-C",
+    "cmn-CN-Wavenet-D",
+    "nb-NO-Wavenet-A",
+    "nb-NO-Wavenet-B",
+    "nb-NO-Wavenet-C",
+    "nb-NO-Wavenet-D",
+    "nb-NO-Wavenet-E",
+    "pt-PT-Wavenet-A",
+    "pt-PT-Wavenet-B",
+    "pt-PT-Wavenet-C",
+    "pt-PT-Wavenet-D",    
+    "ru-RU-Wavenet-A",
+    "ru-RU-Wavenet-B",
+    "ru-RU-Wavenet-C",
+    "ru-RU-Wavenet-D",
+    "ru-RU-Wavenet-E",
+    "sk-SK-Wavenet-A",    
+    "sv-SE-Wavenet-A",  
+    "tr-TR-Wavenet-A",
+    "tr-TR-Wavenet-B",
+    "tr-TR-Wavenet-C",
+    "tr-TR-Wavenet-D",
+    "tr-TR-Wavenet-E", 
+    "es-ES-Standard-A",
+    "uk-UA-Wavenet-A",
+    "vi-VN-Wavenet-A",
+    "vi-VN-Wavenet-B",
+    "vi-VN-Wavenet-C",
+    "vi-VN-Wavenet-D",
+    "en-AU-Wavenet-A",
+    "en-AU-Wavenet-B",
+    "en-AU-Wavenet-C",
+    "en-AU-Wavenet-D",
+    "en-AU-NatashaNeural",
+    "en-AU-WilliamNeural",
+    "en-CA-ClaraNeural",
+    "en-IN-Wavenet-A",
+    "en-IN-Wavenet-B",
+    "en-IN-Wavenet-C",
+    "en-IN-Wavenet-D",
+    "en-IN-NeerjaNeural",
+    "en-IE-EmilyNeural",
+    "en-GB-Wavenet-A",
+    "en-GB-Wavenet-B",
+    "en-GB-Wavenet-C",
+    "en-GB-Wavenet-D",
+    "en-GB-Wavenet-F",
+    "en-US-Wavenet-A",
+    "en-US-Wavenet-B",
+    "en-US-Wavenet-C",
+    "en-US-Wavenet-D",
+    "en-US-Wavenet-E",
+    "en-US-Wavenet-F",
+    "en-US-Wavenet-G",
+    "en-US-Wavenet-H",
+    "en-US-Wavenet-I",
+    "en-US-Wavenet-J",
+    "en-US-AriaNeural",
+    "en-US-GuyNeural",
+    "en-US-JennyNeural"
+]
+def is_valid_voice_key(voice_key):
+    return voice_key in valid_voices
+
+
+microsoft_voices = [
+    "Oprah200",
+    "en-US-AriaNeural",
+    "en-US-GuyNeural",
+    "en-US-JennyNeural",
+    "en-IN-NeerjaNeural",
+    "en-IE-EmilyNeural",
+    "en-AU-NatashaNeural",
+    "en-AU-WilliamNeural",
+    "en-CA-ClaraNeural"
+]
+def is_microsoft_voice(voice_key):
+    return voice_key in microsoft_voices
 
 
 @bot.event

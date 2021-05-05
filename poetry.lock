@@ -458,6 +458,7 @@ typing-extensions = "*"
 [package.source]
 type = "url"
 url = "https://download.pytorch.org/whl/cu102/torch-1.8.1%2Bcu102-cp37-cp37m-win_amd64.whl"
+
 [[package]]
 name = "tqdm"
 version = "4.60.0"
@@ -540,7 +541,7 @@ typing-extensions = {version = ">=3.7.4", markers = "python_version < \"3.8\""}
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "162617161e1fe922ef173288747ddb8cb1c1c74b19106a2cdfc4574101a9d841"
+content-hash = "f1136cacbe0141b8107f939be20cda1e49d1a4b4e26ddb71310dbda772b7c18e"
 
 [metadata.files]
 aiohttp = [
