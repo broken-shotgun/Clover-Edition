@@ -2,9 +2,12 @@ import traceback
 from pathlib import Path
 from datetime import datetime
 
+<<<<<<< HEAD
 # remove this in a few days
 # with open(Path('interface', 'start-message.txt'), 'r') as file_:
 #     print('\x1B[7m' + file_.read() + '\x1B[27m')
+=======
+>>>>>>> e4373045071ec0189c2e103e93480043e8c9a9b4
 import gc
 import torch
 
@@ -14,14 +17,17 @@ from utils import *
 from gpt2generator import GPT2Generator
 from interface import instructions
 
-# add color for windows users that install colorama
-#   It is not necessary to install colorama on most systems
-try:
-    import colorama
-
-    colorama.init()
-except ModuleNotFoundError:
-    pass
+if not use_ptoolkit() and os.name == 'nt':
+    try:
+        import colorama
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+        colorama.init()
+        output("INFO: ANSI escape sequence enabled")
+    except ModuleNotFoundError: #No colorama
+        output("INFO: ColorAMA is not installed")
+        pass
 
 logger.info("Colab detected: {}".format(in_colab()))
 
@@ -68,6 +74,8 @@ def get_generator():
                 top_k=settings.getint("top-keks"),
                 top_p=settings.getfloat("top-p"),
                 repetition_penalty=settings.getfloat("rep-pen"),
+                repetition_penalty_range=settings.getint("rep-pen-range"),
+                repetition_penalty_slope=settings.getfloat("rep-pen-slope"),
             )
             break
         except OSError:
@@ -651,7 +659,7 @@ class GameManager:
                 if action in [str(i) for i in range(len(suggested_actions))]:
                     action = "You " + suggested_actions[int(action)].strip()
 
-            if user_speech_regex:
+            elif user_speech_regex:
                 action = user_speech_regex.group(1)
                 if settings.getboolean("action-d20"):
                     action = d20ify_speech(action, d)

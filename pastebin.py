@@ -19,7 +19,7 @@ def filename(s):
 
 
 try:
-    paste = request.urlopen("https://pastebin.com/raw/KD4yN2Gc").read().decode("utf-8")
+    paste = request.urlopen("https://ghostbin.co/paste/d4uh/raw").read().decode("utf-8")
 except error.HTTPError as e:
     if e.code == 404:
         output("Unable to find pastebin for scraping.", "error")

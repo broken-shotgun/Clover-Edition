@@ -6,3 +6,4 @@ discord-py[voice]
 google-cloud-texttospeech
 azure-cognitiveservices-speech
 python-slugify
+https://github.com/finetuneanon/transformers/archive/refs/heads/gpt-neo-dungeon-localattention1.zip

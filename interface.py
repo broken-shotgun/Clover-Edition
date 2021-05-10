@@ -1,10 +1,8 @@
 from getconfig import settings, colors, setting_info
 from utils import pad_text
 
-
 def boolValue(bool):
     return "on" if bool else "off"
-
 
 def instructions():
     print('\n' +
