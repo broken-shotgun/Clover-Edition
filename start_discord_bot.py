@@ -18,7 +18,15 @@ import azure.cognitiveservices.speech as speechsdk
 from slugify import slugify
 
 # bot setup
-bot = commands.Bot(command_prefix='!')
+description = "Sniffing the Internet's anus"
+help_command = commands.DefaultHelpCommand(
+    no_category = 'AI Dungeon'
+)
+bot = commands.Bot(
+    command_prefix='!',
+    description = description,
+    help_command = help_command
+)
 ADMIN_ROLE = settings.get('discord-bot-admin-role', 'admin')
 CHANNEL = settings.get('discord-bot-channel', 'general')
 DISCORD_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
@@ -130,6 +138,8 @@ async def on_disconnect():
 
 async def handle_newgame(loop, channel, context):
     global story
+    reset_who_task = loop.run_in_executor(None, update_whoami, '???')
+    await asyncio.wait_for(reset_who_task, timeout=5, loop=loop)
     if len(context) > 0:
         await eplog(loop, f"\n>> {context}")
         story = Story(generator, context, censor=True, savefile=str(uuid.uuid4()))
@@ -390,7 +400,7 @@ def is_in_channel():
 
 
 def escape(text):
-    return re.sub('[\\`*_<>]', '', text)
+    return re.sub(r'[\\`*_<>]', '', text)
 
 
 @bot.command(name='do', help='Continues AI Dungeon game', aliases=['you', 'next'])
@@ -596,7 +606,7 @@ async def track_whoami(ctx, *, character):
 
 def update_whoami(character):
     with open("tmp/whoami.txt", "w", encoding="utf-8") as out:
-        out.write(f" Currently playing as: {character}")
+        out.write(f" Playing as: {character}")
 
 
 def update_character_list(character):
@@ -633,98 +643,125 @@ async def list_voices(ctx):
 
 
 valid_voices = [
-    "Oprah200", 
+    "Oprah200",
+    # Danish
     "da-DK-Wavenet-A",
     "da-DK-Wavenet-C",
     "da-DK-Wavenet-D",
     "da-DK-Wavenet-E",
+    # Dutch
     "nl-NL-Wavenet-A",
     "nl-NL-Wavenet-B",
     "nl-NL-Wavenet-C",
     "nl-NL-Wavenet-D",
     "nl-NL-Wavenet-E",
+    # Filipino
     "fil-PH-Wavenet-A",
     "fil-PH-Wavenet-B",
     "fil-PH-Wavenet-C",
     "fil-PH-Wavenet-D",
+    # Finnish
     "fi-FI-Wavenet-A",
+    # French
     "fr-FR-Wavenet-A",
     "fr-FR-Wavenet-B",
     "fr-FR-Wavenet-C",
     "fr-FR-Wavenet-D",
     "fr-FR-Wavenet-E",
+    # French Canada
     "fr-CA-Wavenet-A",
     "fr-CA-Wavenet-B",
     "fr-CA-Wavenet-C",
     "fr-CA-Wavenet-D",
+    # German
     "de-DE-Wavenet-A",
     "de-DE-Wavenet-B",
     "de-DE-Wavenet-C",
     "de-DE-Wavenet-D",
     "de-DE-Wavenet-E",
     "de-DE-Wavenet-F",
-    "el-GR-Wavenet-A",   
+    # Greek
+    "el-GR-Wavenet-A",
+    # Italian
     "it-IT-Wavenet-A",
     "it-IT-Wavenet-B",
     "it-IT-Wavenet-C",
-    "it-IT-Wavenet-D", 
+    "it-IT-Wavenet-D",
+    # Japanese
     "ja-JP-Wavenet-A",
     "ja-JP-Wavenet-B",
     "ja-JP-Wavenet-C",
-    "ja-JP-Wavenet-D", 
+    "ja-JP-Wavenet-D",
+    # Korean 
     "ko-KR-Wavenet-A",
     "ko-KR-Wavenet-B",
     "ko-KR-Wavenet-C",
     "ko-KR-Wavenet-D",
+    # Mandarin Chinese
     "cmn-CN-Wavenet-A",
     "cmn-CN-Wavenet-B",
     "cmn-CN-Wavenet-C",
     "cmn-CN-Wavenet-D",
+    # Norwegian
     "nb-NO-Wavenet-A",
     "nb-NO-Wavenet-B",
     "nb-NO-Wavenet-C",
     "nb-NO-Wavenet-D",
     "nb-NO-Wavenet-E",
+    # Portuguese
     "pt-PT-Wavenet-A",
     "pt-PT-Wavenet-B",
     "pt-PT-Wavenet-C",
-    "pt-PT-Wavenet-D",    
+    "pt-PT-Wavenet-D",
+    # Russian
     "ru-RU-Wavenet-A",
     "ru-RU-Wavenet-B",
     "ru-RU-Wavenet-C",
     "ru-RU-Wavenet-D",
     "ru-RU-Wavenet-E",
-    "sk-SK-Wavenet-A",    
-    "sv-SE-Wavenet-A",  
+    # Slovakian
+    "sk-SK-Wavenet-A",
+    # Swedish
+    "sv-SE-Wavenet-A",
+    # Turkish
     "tr-TR-Wavenet-A",
     "tr-TR-Wavenet-B",
     "tr-TR-Wavenet-C",
     "tr-TR-Wavenet-D",
-    "tr-TR-Wavenet-E", 
+    "tr-TR-Wavenet-E",
+    # Spanish 
     "es-ES-Standard-A",
+    # Ukrainian
     "uk-UA-Wavenet-A",
+    # Vietnamese
     "vi-VN-Wavenet-A",
     "vi-VN-Wavenet-B",
     "vi-VN-Wavenet-C",
     "vi-VN-Wavenet-D",
+    # Australian English
     "en-AU-Wavenet-A",
     "en-AU-Wavenet-B",
     "en-AU-Wavenet-C",
     "en-AU-Wavenet-D",
     "en-AU-NatashaNeural",
     "en-AU-WilliamNeural",
+    # Canadian English
     "en-CA-ClaraNeural",
+    # Indian English
     "en-IN-Wavenet-A",
     "en-IN-Wavenet-B",
     "en-IN-Wavenet-C",
     "en-IN-Wavenet-D",
     "en-IN-NeerjaNeural",
+    # Irish English
     "en-IE-EmilyNeural",
+    # UK English
     "en-GB-Wavenet-A",
     "en-GB-Wavenet-B",
     "en-GB-Wavenet-C",
     "en-GB-Wavenet-D",
     "en-GB-Wavenet-F",
+    # US English
     "en-US-Wavenet-A",
     "en-US-Wavenet-B",
     "en-US-Wavenet-C",
