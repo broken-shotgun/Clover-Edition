@@ -9,7 +9,7 @@ python = "^3.7"
 profanityfilter = "^2.0.6"
 numpy = "1.19.3"
 torch = {url = "https://download.pytorch.org/whl/cu102/torch-1.8.1%2Bcu102-cp37-cp37m-win_amd64.whl"}
-transformers = "^2.3.0"
+transformers = {url = "https://github.com/finetuneanon/transformers/archive/refs/heads/gpt-neo-dungeon-localattention1.zip"}
 "discord.py" = {extras = ["voice"], version = "^1.5.1"}
 google-cloud-texttospeech = "^2.2.0"
 azure-cognitiveservices-speech = "^1.14.0"
