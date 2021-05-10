@@ -2,12 +2,6 @@ import traceback
 from pathlib import Path
 from datetime import datetime
 
-<<<<<<< HEAD
-# remove this in a few days
-# with open(Path('interface', 'start-message.txt'), 'r') as file_:
-#     print('\x1B[7m' + file_.read() + '\x1B[27m')
-=======
->>>>>>> e4373045071ec0189c2e103e93480043e8c9a9b4
 import gc
 import torch
 
