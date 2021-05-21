@@ -52,4 +52,6 @@ setting_info = {
     "generate-num":     ["Approximate number of words to generate.", 60],
     "top-p":            ["Changes number of words nucleus sampled by the AI.", 0.9],
     "log-level":        ["Development log level. <30 is for developers.", 30],
+    "history-gpt-2":    ["Number of tokens to feed into GPT-2 models.", 1024],
+    "history-gpt-neo":  ["Number of tokens to feed into GPT-Neo models.", 2048],
 }

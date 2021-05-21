@@ -3,23 +3,6 @@ set -e
 cd "$(dirname "${0}")"
 BASE_DIR="$(pwd)"
 PACKAGES=(aria2 git unzip wget)
-#MIN_PYTHON_VERS="3.4.0"
-
-#version_check () {
-#	MAX_VERS=$(echo -e "$(python3 --version | cut -d' ' -f2)\n$MAX_PYTHON_VERS\n$MIN_PYTHON_VERS"\
-#	| sort -V | tail -n1)
-#	MIN_VERS=$(echo -e "$(python3 --version | cut -d' ' -f2)\n$MAX_PYTHON_VERS\n$MIN_PYTHON_VERS"\
-#	| sort -V | head -n1)
-#	if [ "$MIN_VERS" != "$MIN_PYTHON_VERS" ]; then
-#		echo "Your installed python version, $(python3 --version), is too old."
-#		echo "Please update to at least $MIN_PYTHON_VERS."
-#		exit 1
-#	elif [ "$MAX_VERS" != "$MAX_PYTHON_VERS" ]; then
-#		echo "Your installed python version, $(python3 --version), is too new."
-#		echo "Please install $MAX_PYTHON_VERS."
-#		exit 1
-#	fi
-#}
 
 pip_install () {
 	if [ ! -d "./venv" ]; then
@@ -34,7 +17,15 @@ pip_install () {
 	echo "You are using https://github.com/cloveranon/Clover-Edition/commit/${commit_hash}"
 	source "${BASE_DIR}/venv/bin/activate"
 	pip install --upgrade pip setuptools
-	pip install -r "${BASE_DIR}/requirements.txt"
+	pip --no-cache-dir install -r "${BASE_DIR}/requirements/requirements.txt"
+
+	echo "Would you like to install Nvidia CUDA support (~4.5gb) or just use your CPU (~800mb, but much slower)?"
+	select yn in "Nvidia CUDA" "CPU only"; do
+		case $yn in
+			"Nvidia CUDA" ) pip install -r "${BASE_DIR}/requirements/cuda_requirements.txt"; break;;
+			"CPU only" ) pip install -r "${BASE_DIR}/requirements/cpu_requirements.txt"; break;;
+		esac
+	done
 }
 
 is_command() {

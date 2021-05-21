@@ -9,12 +9,6 @@ set PythonPathFile=python39._pth
 :: update from https://github.com/microsoft/terminal/releases
 set WindowsTerminalURL=https://github.com/microsoft/terminal/releases/download/v1.7.1091.0/Microsoft.WindowsTerminal_1.7.1091.0_8wekyb3d8bbwe.msixbundle
 
-:: update from https://pytorch.org/get-started/locally/
-set TorchCudaPip=torch==1.8.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
-
-:: Finetuneanon's fork of Transformers
-set TransformersPip=https://github.com/finetuneanon/transformers/archive/refs/heads/gpt-neo-dungeon-localattention1.zip
-
 :: Checking if the user has curl and tar installed
 for %%X in (curl.exe) do (set HasCurl=%%~$PATH:X)
 for %%X in (tar.exe) do (set HasTar=%%~$PATH:X)
@@ -23,10 +17,15 @@ for %%X in (tar.exe) do (set HasTar=%%~$PATH:X)
 echo AIDungeon2 Clover Edition installer for Windows 10 64-bit
 echo ----------------------------------------------------------------------------------------------
 echo.
+echo Please disable your anti-virus before continuing the install process.
+echo.
+echo.
 echo Using an Nvidia GPU requires 6 GB HDD space, 16 GB RAM, and at least 6 GB of VRAM on your GPU for GPT-2 or up to 8 GB of VRAM for GPT-Neo.
 echo Using only your CPU requires 2 GB HDD space, 16 GB RAM.
 echo Additionally, models require between 6 and 10 GB HDD space each, and you will need at least one.
 echo.
+:: console bell
+echo 
 :selectcuda
 echo 1) Install Nvidia GPU (CUDA) version
 echo 2) Install CPU-only version
@@ -84,21 +83,17 @@ del get-pip.py
 
 cd ..
 
-:: Install Prompt_Toolkit
-echo Installing Prompt_Toolkit
-%PY% -m pip install prompt_toolkit --no-color --no-warn-script-location
-
-:: Install Transformers
-echo Installing Transformers
-%PY% -m pip install %TransformersPip% --no-color --no-warn-script-location
+:: Install Requirements
+echo Installing universal dependencies
+%PY% -m pip --no-cache-dir install -r requirements/requirements.txt --no-color --no-warn-script-location
 
 :: Install Torch
 echo Installing PyTorch
 if %usecuda%==1 (
-  %PY% -m pip install %TorchCudaPip% --no-color --no-warn-script-location
+  %PY% -m pip install -r requirements/cuda_requirements.txt --no-color --no-warn-script-location
 )
 if %usecuda%==2 (
-  %PY% -m pip install torch --no-color --no-warn-script-location
+  %PY% -m pip install -r requirements/cpu_requirements.txt --no-color --no-warn-script-location
 )
 
 :: Check for and offer to help install Windows Terminal
@@ -107,6 +102,8 @@ if defined HasWT (goto models)
 echo.
 echo Microsoft Windows Terminal was not found.
 echo It is highly recommended you install it.
+:: console bell
+echo 
 :selectwt
 set /p openwt="Would you like to install Microsoft Windows Terminal now? (y/n) "
 if "%openwt%"=="y" (
@@ -127,4 +124,6 @@ if "%openwt%"=="n" (goto models) else (goto selectwt)
 echo.
 echo You now need to download a model. See README.md for more details and links.
 echo When you have a model, just double-click play.bat to play!
+:: console bell
+echo 
 pause

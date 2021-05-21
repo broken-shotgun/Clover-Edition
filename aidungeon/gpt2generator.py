@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from typing import Union
@@ -5,10 +6,10 @@ from typing import Union
 import torch
 import torch.nn.functional as F
 import re
-from gpt2 import GPT2LMHeadModelExperimental
+from .gpt2 import GPT2LMHeadModelExperimental
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM
-from getconfig import settings, logger
-from utils import cut_trailing_sentence, output, clear_lines, format_result, use_ptoolkit
+from .getconfig import settings, logger
+from .utils import cut_trailing_sentence, output, clear_lines, format_result, use_ptoolkit
 
 if not settings.getboolean('force-cpu') and not torch.cuda.is_available():
     logger.warning('CUDA is not available, you are limited to CPU only.')
@@ -35,10 +36,6 @@ def hackyEncode(tokenizer, s):
     return tokenizer('====\n ' + s, verbose=False).input_ids[2:]
 
 
-def hackyWhiteSpaceCutter(prompt):
-    return re.search(r'\s*$', prompt).group(0)
-
-
 def memory_merge(prompt, context, tokenizer, maxHistory=1024):
     assert (prompt + context)
     # print(prompt+context)
@@ -50,7 +47,7 @@ def memory_merge(prompt, context, tokenizer, maxHistory=1024):
         logger.debug("Clamping the amount of prompt tokens.")
         context_tokens = prompt_tokens[-maxHistory:]
     else:
-        context_tokens = hackyEncode(tokenizer, hackyWhiteSpaceCutter(prompt) + context)
+        context_tokens = hackyEncode(tokenizer, context)
         context_tokens = context_tokens[-(maxHistory - len(prompt_tokens)):]
         # logger.debug('DECODED CONTEXT TOKENS: `%r`', tokenizer.convert_ids_to_tokens(context_tokens))
         prompt_tokens.extend(context_tokens)
@@ -225,7 +222,7 @@ class GPT2Generator:
         self.repetition_penalty_range = repetition_penalty_range
         self.repetition_penalty_slope = repetition_penalty_slope
         self.batch_size = 1
-        self.max_history_tokens = 1024 - generate_num
+        self.max_history_tokens = settings.getint("history-gpt-2") - generate_num
         self.stop_token = "<|endoftext|>"
 
         if isinstance(model_path, str):
@@ -249,9 +246,22 @@ class GPT2Generator:
         # Load tokenizer and model
         model_class, tokenizer_class = MODEL_CLASSES["gpt2-experimental"] if settings.getboolean(
             "gpt2_experimental") else MODEL_CLASSES["gpt2"]
-        if "gpt-neo" in str(model_path):
-            self.max_history_tokens = 2048 - generate_num
+
+        # Checking 3 places to see if it's a gpt-neo model
+        with open(os.path.join(str(model_path), "config.json")) as f:
+            model_config = json.load(f)
+        neo_in_path = "gpt-neo" in str(model_path).lower()
+        neo_in_architectures = "architectures" in model_config and "GPTNeoForCausalLM" in model_config["architectures"]
+        neo_in_model_type = "model_type" in model_config and "gpt_neo" == model_config["model_type"]
+        logger.info(
+            "Looking for GPT-Neo - path:{}, arch:{}, type:{}".format(str(neo_in_path), str(neo_in_architectures), str(neo_in_model_type)))
+
+        if neo_in_path or neo_in_architectures or neo_in_model_type:
+            self.max_history_tokens = settings.getint("history-gpt-neo") - generate_num
             model_class = GPTNeoForCausalLM
+        
+        logger.info("Max token history: " + str(self.max_history_tokens))
+
         self.tokenizer = tokenizer_class.from_pretrained(str(self.checkpoint_path))
         self.model = model_class.from_pretrained(str(self.checkpoint_path))
         self.model.to(self.dtype).to(self.device)

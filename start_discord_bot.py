@@ -3,11 +3,11 @@ import asyncio, io, json, logging, os, re, typing, uuid
 from datetime import datetime
 from logging.handlers import SysLogHandler
 
-from getconfig import settings
+from aidungeon.getconfig import settings
 from pathlib import Path
-from play import get_generator, save_story, load_story
-from storymanager import Story
-from utils import *
+from aidungeon.play import get_generator, save_story, load_story
+from aidungeon.storymanager import Story
+from aidungeon.utils import *
 
 import discord
 from discord.ext import commands

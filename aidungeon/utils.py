@@ -6,7 +6,7 @@ import textwrap
 import os
 import sys
 
-from getconfig import logger, settings, colors, ptcolors
+from .getconfig import logger, settings, colors, ptcolors
 from shutil import get_terminal_size
 
 
@@ -49,6 +49,10 @@ def use_ptoolkit():
     return not settings.getboolean("colab-mode") and settings.getboolean('prompt-toolkit')
 
 
+def use_discord_bot():
+    return settings.getboolean("discord-bot")
+
+
 def clear_lines(n):
     """Clear the last line in the terminal."""
     if in_colab() or settings.getboolean('colab-mode'):
@@ -64,7 +68,7 @@ if in_colab():
 else:
     try:
         if settings.getboolean('prompt-toolkit'):
-            from inline_editor import edit_multiline
+            from .inline_editor import edit_multiline
             from prompt_toolkit import prompt as ptprompt
             from prompt_toolkit import print_formatted_text
             from prompt_toolkit.styles import Style

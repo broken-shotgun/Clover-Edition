@@ -1,10 +1,10 @@
 import json
 import re
-from getconfig import settings
-from utils import output, format_result, format_input, get_similarity
+from .getconfig import settings
+from .utils import output, format_result, format_input, get_similarity
 from profanityfilter import ProfanityFilter
 
-with open("data/censored_words.txt", "r") as f:
+with open("tools/data/censored_words.txt", "r") as f:
     censored_words = [l.replace("\n", "") for l in f.readlines()]
 
 pf = ProfanityFilter(custom_censor_list=censored_words)

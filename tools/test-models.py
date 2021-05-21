@@ -26,7 +26,7 @@ prompt='abcd1234'
 
 
 print('\x1B[0m') #I really am addicted to color output
-with open(Path('interface', 'clover', encoding='utf-8')) as file:
+with open(Path('interface/', 'clover', encoding='utf-8')) as file:
     print(file.read())
 
 print('\x1B[35m')

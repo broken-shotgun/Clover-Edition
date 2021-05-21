@@ -1,29 +1,10 @@
-import traceback
 from pathlib import Path
-from datetime import datetime
 
-import gc
-import torch
-
-from getconfig import config, setting_info
-from storymanager import Story
-from utils import *
-from gpt2generator import GPT2Generator
-from interface import instructions
-
-if not use_ptoolkit() and os.name == 'nt':
-    try:
-        import colorama
-        import ctypes
-        kernel32 = ctypes.windll.kernel32
-        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
-        colorama.init()
-        output("INFO: ANSI escape sequence enabled")
-    except ModuleNotFoundError: #No colorama
-        output("INFO: ColorAMA is not installed")
-        pass
-
-logger.info("Colab detected: {}".format(in_colab()))
+from .getconfig import config, setting_info
+from .storymanager import Story
+from .utils import *
+from .gpt2generator import GPT2Generator
+from .interface import instructions
 
 
 def get_generator():
@@ -87,13 +68,6 @@ def get_generator():
             output("Model load cancelled. ", "error")
             exit(0)
     return generator
-
-
-if not Path("prompts", "Anime").exists():
-    try:
-        import pastebin
-    except:
-        output("Continuing without downloading prompts...", "error")
 
 
 def d20ify_speech(action, d):
@@ -349,20 +323,6 @@ def alter_text(text):
     return " ".join(sentences).strip()
 
 
-def print_intro():
-    print()
-
-    with open(Path("interface", "mainTitle.txt"), "r", encoding="utf-8") as file:
-        output(file.read(), "title", wrap=False, beg='')
-
-    with open(Path("interface", "subTitle.txt"), "r", encoding="utf-8") as file:
-        output(file.read(), "subtitle", wrap=False, beg='')
-
-    output("Go to https://github.com/cloveranon/Clover-Edition/ "
-           "or email cloveranon@nuke.africa for bug reports, help, and feature requests.",
-           'subsubtitle', end="\n\n")
-
-
 class GameManager:
 
     def __init__(self, gen: GPT2Generator):
@@ -390,7 +350,7 @@ class GameManager:
                 return False
         elif new_game_option == 1:
             with open(
-                    Path("interface", "prompt-instructions.txt"), "r", encoding="utf-8"
+                    Path("interface/", "prompt-instructions.txt"), "r", encoding="utf-8"
             ) as file:
                 output(file.read(), "instructions", wrap=False)
             if use_ptoolkit():
@@ -557,6 +517,31 @@ class GameManager:
                 output("You remember " + memory + ". ", "message")
             else:
                 output("Please enter something valid to remember. ", "error")
+
+        elif command == "memalt":
+            while True:
+                output("Select a memory to alter: ", "menu")
+                list_items(self.story.memory + ["(Finish)"], "menu")
+                i = input_number(len(self.story.memory), default=-1)
+                if i == len(self.story.memory):
+                    break
+                else:
+                    self.story.memory[i] = alter_text(self.story.memory[i])
+                    if self.story.memory[i] == 0:
+                        del self.story.memory[i]
+
+        elif command == "memswap":
+            while True:
+                output("Select two memories to swap: ", "menu")
+                list_items(self.story.memory + ["(Finish)"], "menu")
+                i = input_number(len(self.story.memory), default=-1)
+                if i == len(self.story.memory):
+                    break
+                j = input_number(len(self.story.memory), default=-1)
+                if j == len(self.story.memory):
+                    break
+                else:
+                    self.story.memory[i], self.story.memory[j] = self.story.memory[j], self.story.memory[i]
 
         elif command == "forget":
             while True:
@@ -756,32 +741,3 @@ class GameManager:
             # Autosave after every input from the user (if it's enabled)
             if settings.getboolean("autosave"):
                 save_story(self.story, file_override=self.story.savefile, autosave=True)
-
-
-# This is here for rapid development, without reloading the model. You import play into a jupyternotebook with autoreload
-if __name__ == "__main__":
-    with open(Path("interface", "clover"), "r", encoding="utf-8") as file_:
-        print(file_.read())
-    try:
-        gm = GameManager(get_generator())
-        while True:
-            # May be needed to avoid out of mem
-            gc.collect()
-            torch.cuda.empty_cache()
-            print_intro()
-            gm.play_story()
-    except KeyboardInterrupt:
-        output("Quitting game.", "message")
-        if gm and gm.story:
-            if input_bool("Do you want to save? (y/N): ", "query"):
-                save_story(gm.story)
-    except Exception:
-        traceback.print_exc()
-        output("A fatal error has occurred. ", "error")
-        if gm and gm.story:
-            if not gm.story.savefile or len(gm.story.savefile.strip()) == 0:
-                savefile = datetime.now().strftime("crashes/%d-%m-%Y_%H%M%S")
-            else:
-                savefile = gm.story.savefile
-            save_story(gm.story, file_override=savefile)
-        exit(1)

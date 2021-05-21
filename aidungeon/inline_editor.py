@@ -5,7 +5,7 @@ from prompt_toolkit.layout.containers import (
     HSplit,
     Window,
 )
-from utils import clear_lines, getTermWidth
+from .utils import clear_lines, getTermWidth
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.widgets import (

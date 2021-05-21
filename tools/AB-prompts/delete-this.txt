@@ -1,0 +1,10 @@
+This is an example prompt. You should delete this file and replace it with one of your stories. You can add as many files in this folder as you as you want. The more prompts you test with, the more accurate the test will be.
+Ideally the files should be fairly long, with at least several back and forths between you and the AI. Here is an exmaple story:
+
+You are in example land. You have a sword and a bow. An AI approaches you.
+
+> You say "Hello." to the AI.
+
+The AI looks at you quizzically.
+
+> You punch the AI.
